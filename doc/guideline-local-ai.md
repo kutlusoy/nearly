@@ -1,11 +1,11 @@
 # Nearly: Local AI Guideline
 
-- **Version:** 0.1 (draft)
+- **Version:** 0.2 (draft)
 - **Date:** November 21, 2026
 - **Audience:** Android developers, release engineers and whoever prepares the models
-- **Reference implementation:** none yet
+- **Reference implementation:** none yet, the folder `models/` holds the manifest
 - **Fork base:** [`microsoft/BitNet`](https://github.com/microsoft/BitNet) as `kutlusoy/bitnet` (`bitnet.cpp`, CPU kernels, models)
-- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) section 8, [`guideline-decisions.md`](./guideline-decisions.md) rows 23 to 25, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
+- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) section 8, [`guideline-decisions.md`](./guideline-decisions.md) rows 23 to 26, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional. Sizes in this document are targets or assumptions, not measurements. They MUST be measured before a decision is final.
 
@@ -17,13 +17,14 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 - **On the device.** All AI work runs on the phone. Nothing from a chat, photo or profile goes to a server for the AI. No telemetry.
 - **Two ways to get a model:** inside the build (the base pack) or downloaded from the repository (all other packs).
 - **Optional.** Without any pack the app works fully. Each feature switches on when its pack is present.
+- **Languages:** the translation covers the European languages of the product concept, the interface is translated into the same languages.
 
 ## 2. Packs
 
 | Pack | Content | Delivery | Target size |
 |---|---|---|---|
 | Base | language detection, spam and bot classifier, translation for the first pair (English and German) | in the build | 50 MB or less in total |
-| Language | translation to and from English for one language, interface independent | download | 15 to 40 MB per language (assumption) |
+| Language | translation to and from English for one language | download | 15 to 40 MB per language (assumption) |
 | Reply | small language model for reply suggestions and summaries | download | as small as the quality test allows, about 1 GB at most |
 | Photo | classifier for sensitive photos | download | a few MB to tens of MB |
 
@@ -34,18 +35,21 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 ## 3. Where the packs live
 
-- **Inside the build:** the base pack is put into the app assets by the release workflow. The workflow takes the files from the model release by hash (section 4), so the build is reproducible and the files are not committed into the app repository.
-- **Download:** from the release assets of a separate models repository (proposal: `kutlusoy/nearly-models`). GitHub releases are used, not files in the git tree, because the git tree has a small file limit and release assets can be much larger (to be verified against the current GitHub limits).
-- **Manifest:** every model release contains `models.json` with one entry per pack: id, version, language, task, size, SHA-256, download URL, license, minimum RAM, minimum app version. The manifest is signed.
-- **Transport:** HTTPS only. Plain HTTP MUST NOT be used. By default downloads go through Tor like the rest of the traffic. A download over a direct connection is possible only when the user chooses it (for example on Wi-Fi for a large pack), because the files are public and do not carry personal data. GitHub redirects release downloads to a CDN host, so the client must follow the redirect over HTTPS and check the final host against a list.
+Everything is in this repository, in the folder `models/`.
+
+- **In the git tree (small text files only):** `models/models.json` (the manifest), `models/models.json.sig` (its signature), `models/licenses/`, `models/scripts/`, `models/README.md`.
+- **Release assets of this repository:** the model files themselves, attached to a release with the tag `models-<version>`. Reason: GitHub rejects single files above 100 MB in the git tree, and every binary that is committed stays in the history forever and makes every clone larger. Release assets avoid both. The limits of GitHub MUST be checked again before the first model release.
+- **Manifest:** one entry per pack: id, version, language, task, size, SHA-256, download URL, license, minimum RAM, minimum app version. The manifest is signed.
+- **Inside the build:** the base pack is put into the app assets by the release workflow. The workflow takes the files from the model release by the hash that is pinned in the repository, so the build is reproducible.
+- **Transport:** HTTPS only. Plain HTTP MUST NOT be used. By default downloads go through Tor like the rest of the traffic. A download over a direct connection is possible only when the user chooses it (for example on Wi-Fi for a large pack), because the files are public and do not carry personal data. GitHub redirects release downloads to a CDN host, so the client follows the redirect over HTTPS and checks the final host against a list.
 - **Checks (MUST):** SHA-256 of the file against the signed manifest, signature of the manifest with a public key that is built into the app, size limit, free storage check. A file that fails is deleted and never loaded.
 - **Install:** download to a temporary file in private app storage, resume with HTTP range requests, verify, then move to the final place in one step. A pack is active only after the check.
 - **Update:** the app checks the manifest at most once a day while the user has packs installed, and only through the configured network path.
 
 ## 4. Build
 
-- A models workflow in the models repository builds or converts the model files, writes the manifest, signs it and attaches both to a release.
-- The app release workflow fetches the base pack by the hash that is pinned in the app repository, checks it and puts it into the assets. A changed hash needs a commit, so the base pack never changes silently.
+- A models workflow in this repository (`.github/workflows/models.yml`, not written yet) builds or converts the model files, writes the manifest, signs it, attaches the files to a release `models-<version>` and commits the manifest and signature into `models/`.
+- The app release workflow fetches the base pack by the pinned hash, checks it and puts it into the assets. A changed hash needs a commit, so the base pack never changes silently.
 - Native code (`bitnet.cpp` or another runtime) is cross built with the NDK in the same pinned container as Tor and i2pd. `bitnet.cpp` documents CPU kernels for ARM and x86 and no Android build, so the Android build is a work item and not a given.
 - **Store size:** an app bundle for Google Play has size limits for the base module. A large pack MUST NOT go into the base module. If a pack should be offered through Google Play later, Play asset delivery is an option. The current limits MUST be checked before that.
 
@@ -89,7 +93,8 @@ A pack is offered in a language only if the quality test passes for that languag
 
 ## 9. Checklist
 
-- [ ] Models repository and release workflow with a signed manifest
+- [x] Folder `models/` with a README and an empty manifest
+- [ ] Models workflow with a signed manifest and release assets
 - [ ] Signature key created offline, public key built into the app
 - [ ] Download client: HTTPS, Tor by default, resume, checksum, signature, atomic install
 - [ ] Base pack in the app release workflow by a pinned hash
@@ -100,8 +105,7 @@ A pack is offered in a language only if the quality test passes for that languag
 
 ## 10. Open Questions
 
-1. Is a separate models repository (`kutlusoy/nearly-models`) acceptable, or should the models live in the app repository releases?
-2. Which translation model family and runtime are used?
-3. Which language model reaches the quality bar for reply suggestions in German and the other first languages?
-4. Is the base pack of 50 MB or less right, or should the app ship smaller and download even the first pair?
-5. Who holds the signature key and how is it backed up?
+1. Which translation model family and runtime are used?
+2. Which language model reaches the quality bar for reply suggestions in German and the other first languages?
+3. Is the base pack of 50 MB or less right, or should the app ship smaller and download even the first pair?
+4. Who holds the signature key and how is it backed up?
