@@ -1,6 +1,5 @@
 package com.kutlusoy.nearly.nostr
 
-import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -9,8 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GiftWrapTest {
-    private fun account(name: String): Session =
-        KeyVault(FileKeyStore(Files.createTempDirectory("keys").toFile()), logN = 10).create(name, "$name@example.org", "Correct-Horse-9!").first
+    private fun account(name: String): Session = testSession(name)
 
     private fun hex(s: Session) = NostrKeys.toHex(s.publicKey)
 

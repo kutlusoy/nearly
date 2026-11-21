@@ -1,6 +1,5 @@
 package com.kutlusoy.nearly.nostr
 
-import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -46,10 +45,7 @@ class EventTest {
         assertFalse(Schnorr.verify(ByteArray(32), sig, pk))
     }
 
-    private fun session(): Session {
-        val vault = KeyVault(FileKeyStore(Files.createTempDirectory("keys").toFile()), logN = 10)
-        return vault.create("anna", "anna@example.org", "Correct-Horse-9!").first
-    }
+    private fun session(): Session = testSession("anna")
 
     @Test
     fun signedEventIsValidAndTamperProof() {

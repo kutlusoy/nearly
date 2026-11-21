@@ -4,7 +4,6 @@ import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.network.NetworkPorts
 import com.kutlusoy.nearly.network.NetworkSettings
 import com.kutlusoy.nearly.network.RelayRouter
-import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -17,8 +16,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 
 class NostrClientTest {
-    private fun session(): Session =
-        KeyVault(FileKeyStore(Files.createTempDirectory("keys").toFile()), logN = 10).create("anna", "anna@example.org", "Correct-Horse-9!").first
+    private fun session(): Session = testSession("anna")
 
     private fun router(mode: NetworkMode) = RelayRouter({ NetworkSettings(mode) }, { NetworkPorts() })
 

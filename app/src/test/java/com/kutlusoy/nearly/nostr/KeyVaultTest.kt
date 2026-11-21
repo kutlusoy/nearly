@@ -8,79 +8,79 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class KeyVaultTest {
-    private val password = "Correct-Horse-9!"
-
-    private fun vault() = KeyVault(FileKeyStore(Files.createTempDirectory("keys").toFile()), logN = 10)
-
     @Test
-    fun policyReportsEveryRule() {
-        val weak = PasswordPolicy.evaluate("abc")
-        assertFalse(weak.valid)
-        assertTrue(weak.isMet(PasswordRule.Lowercase))
-        assertFalse(weak.isMet(PasswordRule.MinLength))
+    fun generatedPassphraseIsValidAndShortPasswordsAreNot() {
+        assertTrue(PasswordPolicy.evaluate(Passphrase.generate()).valid)
+        assertEquals(4, PasswordPolicy.evaluate(Passphrase.generate()).strength)
         assertEquals(0, PasswordPolicy.evaluate("").strength)
-        assertTrue(PasswordPolicy.evaluate(password).valid)
-        assertFalse(PasswordPolicy.evaluate("Anna-Secret-123!", username = "anna").valid)
-        assertTrue(PasswordPolicy.evaluate("Correct-Horse-Battery-9!").strength == 4)
+        assertFalse(PasswordPolicy.evaluate("Correct-Horse-9!").valid)
+        assertFalse(PasswordPolicy.evaluate("Summer2026!!!!!!!!!!").valid)
+        assertFalse(PasswordPolicy.evaluate("abandon ability able about").valid)
+        assertFalse(PasswordPolicy.evaluate("abandon abandon abandon abandon abandon").valid)
     }
 
     @Test
-    fun createThenUnlockGivesTheSameKey() {
-        val vault = vault()
-        val (created, backup) = vault.create("Anna", "Anna@Example.org", password)
-        val unlocked = vault.unlock("anna", " anna@example.ORG ", password)
-        assertEquals(created.npub, unlocked.npub)
-        assertEquals(backup, vault.exportNsec("anna", "anna@example.org", password))
-        assertEquals(created.npub, NostrKeys.npub(NostrKeys.publicKey(NostrKeys.decodeNsec(backup))))
+    fun longRandomLookingPasswordIsAccepted() {
+        assertTrue(PasswordPolicy.evaluate("k7#Qm2vX!pL9zR4wT8nB").valid)
     }
 
     @Test
-    fun wrongPasswordAndUnknownAccountAreSeparateErrors() {
-        val vault = vault()
-        vault.create("anna", "anna@example.org", password)
-        assertFailsWith<WrongPasswordException> { vault.unlock("anna", "anna@example.org", "Correct-Horse-8!") }
-        assertFailsWith<UnknownAccountException> { vault.unlock("bob", "bob@example.org", password) }
+    fun passwordContainingTheUsernameIsRefused() {
+        assertTrue(PasswordPolicy.evaluate("abandon ability able about above", "anna").valid)
+        assertFalse(PasswordPolicy.evaluate("k7#Qm2vX!anna9zR4wT8nB", "Anna").valid)
+    }
+
+    @Test
+    fun sameThreeEntriesGiveTheSameIdentityOnANewDevice() {
+        val first = testVault().signUp("Anna", "Anna@Example.org", TEST_PHRASE)
+        val newDevice = testVault().signIn(" anna ", "anna@example.ORG", "Abandon-Ability-Able-About-Above")
+        assertEquals(first.npub, newDevice.npub)
+    }
+
+    @Test
+    fun signInOnTheKnownDeviceUsesTheStoredCopyAndDetectsAWrongPassword() {
+        val vault = testVault()
+        val created = vault.signUp("anna", "anna@example.org", TEST_PHRASE)
+        assertTrue(vault.isKnownOnThisDevice("anna", "anna@example.org"))
+        assertEquals(created.npub, vault.signIn("anna", "anna@example.org", TEST_PHRASE).npub)
+        assertFailsWith<WrongPasswordException> { vault.signIn("anna", "anna@example.org", "abandon ability able about abuse") }
+    }
+
+    @Test
+    fun wrongEntriesOnANewDeviceGiveAnotherIdentity() {
+        val a = testVault().signUp("anna", "anna@example.org", TEST_PHRASE)
+        assertTrue(a.npub != testVault().signIn("anna", "anna@exampel.org", TEST_PHRASE).npub)
     }
 
     @Test
     fun weakPasswordAndDuplicateAreRefused() {
-        val vault = vault()
-        assertFailsWith<WeakPasswordException> { vault.create("anna", "anna@example.org", "short") }
-        vault.create("anna", "anna@example.org", password)
-        assertFailsWith<AccountExistsException> { vault.create("anna", "anna@example.org", password) }
+        val vault = testVault()
+        assertFailsWith<WeakPasswordException> { vault.signUp("anna", "anna@example.org", "short") }
+        vault.signUp("anna", "anna@example.org", TEST_PHRASE)
+        assertFailsWith<AccountExistsException> { vault.signUp("anna", "anna@example.org", TEST_PHRASE) }
     }
 
     @Test
-    fun importKeepsTheIdentity() {
-        val vault = vault()
-        val nsec = "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5"
-        val expected = NostrKeys.npub(NostrKeys.publicKey(NostrKeys.decodeNsec(nsec)))
-        assertEquals(expected, vault.import("anna", "anna@example.org", password, nsec).npub)
-        assertEquals(expected, vault.unlock("anna", "anna@example.org", password).npub)
+    fun exportNeedsTheRightPasswordAndMatchesTheIdentity() {
+        val vault = testVault()
+        val session = vault.signUp("anna", "anna@example.org", TEST_PHRASE)
+        val nsec = vault.exportNsec("anna", "anna@example.org", TEST_PHRASE)
+        assertEquals(session.npub, NostrKeys.npub(NostrKeys.publicKey(NostrKeys.decodeNsec(nsec))))
+        assertTrue(vault.exportNsec("anna", "anna@example.org", "abandon ability able about abuse") != nsec)
     }
 
     @Test
-    fun changePasswordKeepsTheKeyAndInvalidatesTheOldPassword() {
-        val vault = vault()
-        val before = vault.create("anna", "anna@example.org", password).first.npub
-        vault.changePassword("anna", "anna@example.org", password, "Another-Strong-7#")
-        assertEquals(before, vault.unlock("anna", "anna@example.org", "Another-Strong-7#").npub)
-        assertFailsWith<WrongPasswordException> { vault.unlock("anna", "anna@example.org", password) }
-        assertFailsWith<WeakPasswordException> { vault.changePassword("anna", "anna@example.org", "Another-Strong-7#", "weak") }
-    }
-
-    @Test
-    fun deleteNeedsThePassword() {
-        val vault = vault()
-        vault.create("anna", "anna@example.org", password)
-        assertFailsWith<WrongPasswordException> { vault.delete("anna", "anna@example.org", "Correct-Horse-8!") }
-        vault.delete("anna", "anna@example.org", password)
-        assertFalse(vault.exists("anna", "anna@example.org"))
+    fun forgetRemovesOnlyTheLocalCopy() {
+        val vault = testVault()
+        val npub = vault.signUp("anna", "anna@example.org", TEST_PHRASE).npub
+        vault.signOutAndForget("anna", "anna@example.org")
+        assertFalse(vault.isKnownOnThisDevice("anna", "anna@example.org"))
+        assertEquals(npub, vault.signIn("anna", "anna@example.org", TEST_PHRASE).npub)
     }
 
     @Test
     fun lockedSessionHasNoKey() {
-        val session = vault().create("anna", "anna@example.org", password).first
+        val session = testSession("anna")
         assertEquals(32, session.useSecretKey { it.size })
         session.lock()
         assertTrue(session.isLocked)
