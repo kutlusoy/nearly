@@ -56,7 +56,17 @@ private val NearlyShapes = Shapes(
     large = RoundedCornerShape(28.dp),
 )
 
+// Light is the default, the dark theme is a choice in the settings
+enum class ThemeMode { Light, Dark, System }
+
 @Composable
-fun NearlyTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun ThemeMode.isDark(): Boolean = when (this) {
+    ThemeMode.Light -> false
+    ThemeMode.Dark -> true
+    ThemeMode.System -> isSystemInDarkTheme()
+}
+
+@Composable
+fun NearlyTheme(dark: Boolean = false, content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (dark) Dark else Light, shapes = NearlyShapes, content = content)
 }

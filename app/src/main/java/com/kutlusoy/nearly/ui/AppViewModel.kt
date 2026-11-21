@@ -11,6 +11,7 @@ import com.kutlusoy.nearly.nostr.Session
 import com.kutlusoy.nearly.nostr.WrongPasswordException
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.registration.SignInForm
+import com.kutlusoy.nearly.ui.theme.ThemeMode
 import java.io.File
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
     private var session: Session? = null
 
-    private val _state = MutableStateFlow(AppState(signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     fun today(): BirthDate = LocalDate.now().let { BirthDate(it.year, it.monthValue, it.dayOfMonth) }
@@ -84,12 +85,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab) }
+    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false) }
+
+    fun openSettings(open: Boolean) = _state.update { it.copy(settingsOpen = open) }
+
+    fun setTheme(mode: ThemeMode) {
+        prefs.edit().putString(KEY_THEME, mode.name).apply()
+        _state.update { it.copy(themeMode = mode) }
+    }
+
+    private fun savedTheme(): ThemeMode = ThemeMode.values().firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.Light
 
     fun signOut() {
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {
@@ -100,5 +110,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         const val KEY_USERNAME = "username"
         const val KEY_EMAIL = "email"
         const val KEY_AGE = "age"
+        const val KEY_THEME = "theme"
     }
 }

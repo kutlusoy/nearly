@@ -1,6 +1,7 @@
 package com.kutlusoy.nearly.ui
 
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
+import com.kutlusoy.nearly.ui.theme.ThemeMode
 import com.kutlusoy.nearly.ui.registration.SignInForm
 
 enum class Tab { Swipe, Map, Feed, Chats, Profile }
@@ -17,6 +18,8 @@ data class AppState(
     val signIn: SignInForm = SignInForm(),
     val account: AccountInfo? = null,
     val tab: Tab = Tab.Swipe,
+    val themeMode: ThemeMode = ThemeMode.Light,
+    val settingsOpen: Boolean = false,
     val busy: Boolean = false,
     val error: AppError? = null,
 )

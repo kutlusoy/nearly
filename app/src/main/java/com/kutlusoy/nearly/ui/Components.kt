@@ -6,6 +6,9 @@ import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.stringResource
@@ -83,4 +88,43 @@ fun errorText(error: AppError?): String? = when (error) {
     AppError.AccountExists -> stringResource(R.string.reg_exists)
     AppError.Generic -> stringResource(R.string.error_generic)
     null -> null
+}
+
+// Top line of the tabs: the logo and the name, like the header of Tinder and Instagram
+@Composable
+fun NearlyTopBar(trailing: @Composable () -> Unit = {}) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NearlyLogo(size = 28)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.weight(1f))
+        trailing()
+    }
+}
+
+// The profile picture with the rose ring of a story, until real photos exist it shows the first letter
+@Composable
+fun Avatar(name: String, size: Int = 88, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.size(size.dp).background(Brush.linearGradient(listOf(NearlyColors.Rose, NearlyColors.RoseSoft)), CircleShape).padding(3.dp),
+    ) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background, CircleShape).padding(3.dp)) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Text(
+                    name.take(1).uppercase(),
+                    fontSize = (size / 2.4f).sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+    }
 }

@@ -6,17 +6,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kutlusoy.nearly.ui.AppRoot
-import com.kutlusoy.nearly.ui.theme.NearlyTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            NearlyTheme {
-                AppRoot()
-            }
-        }
+        setContent { AppRoot() }
     }
 }
