@@ -1,0 +1,12 @@
+# Nostr relays of Nearly, one address per line, lines starting with # are comments.
+# The app ships with this list and can update it. Public relays are reached through Tor.
+# Every entry MUST be checked before a release (reachable, accepts the event kinds the app uses).
+
+# Public relays (to be verified)
+wss://relay.damus.io
+wss://nos.lol
+wss://relay.primal.net
+
+# Relays of the project, reachable through Tor or I2P (none yet)
+# wss://example.onion
+# wss://example.b32.i2p
