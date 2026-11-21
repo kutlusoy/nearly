@@ -1,6 +1,6 @@
 # Nearly: Decision Record
 
-- **Version:** 0.2 (draft)
+- **Version:** 0.3 (draft)
 - **Date:** November 21, 2026
 - **Audience:** All contributors
 - **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
@@ -28,12 +28,15 @@ This record holds the decisions of the product owner. Where it differs from an o
 | 13 | I2P | Version 1 ships with Tor only. |
 | 14 | Relay connections | As stable as possible: reconnect with backoff, several relays at once. |
 | 15 | License | MIT, see `LICENSE`. The license covers the code, user data is not part of it. |
-| 16 | Language | Everything in the repository is English. |
+| 16 | Language of the repository | Everything in the repository is English. |
 | 17 | Age | 18 and older. The user enters the date of birth at registration, the profile shows the age as in Tinder. |
 | 18 | Key | Derived from username, e-mail and password, so an account can always be restored with the same three entries. Supersedes the random key with a local encrypted copy. |
 | 19 | Password | The app generates 5 random words from the BIP-39 English list (55 bits). The user may choose an own password if it reaches the same estimated strength. 3 words were requested and rejected as too weak (33 bits). |
 | 20 | Password change | Not possible, a new password is a new identity. The UI says so at account creation. |
 | 21 | Existing keys | Importing an existing Nostr key is not supported in the first version. |
+| 22 | Interface style | Close to Instagram (profile, stories, photo grid) and Tinder (swipe cards), with a little of the vertical full-screen feel of TikTok, without video. |
+| 23 | Local AI | Stays part of the product: translation, reply and conversation suggestions, summaries, spam filter, photo blur. All on the device. |
+| 24 | Languages | Not only German, English and Turkish but other European languages as well, for the interface and for the translation by the local AI. First set as a proposal: German, English, French, Spanish, Italian, Portuguese, Dutch, Polish, Turkish. |
 
 ## 2. Consequences
 
@@ -42,6 +45,7 @@ This record holds the decisions of the product owner. Where it differs from an o
 - **No administrators:** takedown and legal contact in the store listing must be solved without an operator who can remove content from relays. This is a risk for the store release.
 - **Username as public name:** uniqueness cannot be guaranteed on Nostr. The public key is the real identity, the username is a label. The UI shows a short part of the key next to the name to tell people apart.
 - **Derived key:** the password is the only secret and the public key allows offline guessing. The strength of the password and the cost of the derivation are the whole protection, see `guideline-nostr-keys.md`.
+- **Many languages:** every language is a separate download for the AI, with its own storage use and a quality check. Reply suggestions are offered only in languages that pass the quality test, other languages use English and the translation chain. The store listing needs a text per language.
 
 ## 3. Open Questions
 
@@ -49,3 +53,4 @@ This record holds the decisions of the product owner. Where it differs from an o
 2. Is the age published as an exact number or as a range?
 3. Which public relays are reachable through Tor and accept the event kinds we use?
 4. Is 64 MiB for the key derivation acceptable on the weakest supported phones?
+5. Is the first language set right, and which languages come next?
