@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="swipe_preview">Preview</string>
+    <string name="swipe_later">Not now</string>
+    <string name="swipe_skip">Skip</string>
+    <string name="swipe_like">Like</string>
+    <string name="swipe_stamp_like">LIKE</string>
+    <string name="swipe_stamp_later">LATER</string>
+    <string name="swipe_stamp_skip">SKIP</string>
+    <string name="swipe_distance">%1$.1f km away</string>
+    <string name="swipe_hint">Right: like. Left: not now. Up: skip.</string>
+    <string name="swipe_empty_title">No one left nearby</string>
+    <string name="swipe_empty_help">Come back later, new people appear when they become active.</string>
+    <string name="swipe_again">Show the sample profiles again</string>
+
+    <string name="profile_posts">Posts</string>
+    <string name="profile_followers">Followers</string>
+    <string name="profile_following">Following</string>
+    <string name="profile_no_photos">No photos yet</string>
+    <string name="profile_no_photos_help">Your photos will show up here.</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">Same as the phone</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_username">Username</string>
+    <string name="settings_age">Age</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="signout_title">Sign out?</string>
+    <string name="signout_help">You need your username, your e-mail and your five recovery words to sign in again.</string>
+    <string name="signout_confirm">Sign out</string>
+    <string name="signout_cancel">Cancel</string>
+</resources>
