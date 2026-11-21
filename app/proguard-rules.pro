@@ -4,3 +4,9 @@
 
 # Only the lightweight API of Bouncy Castle is used (secp256k1, scrypt, ChaCha20-Poly1305), no provider lookup
 -dontwarn org.bouncycastle.**
+
+# OkHttp optional TLS providers
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.jsse.**
+-dontwarn org.openjsse.**
