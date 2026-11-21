@@ -1,10 +1,10 @@
 # Nearly: Product Concept
 
-- **Version:** 0.4 (draft)
+- **Version:** 0.5 (draft)
 - **Date:** November 21, 2026
 - **Audience:** Product, design and Android developers of Nearly
 - **Reference implementation:** network layer `app/src/main/java/com/kutlusoy/nearly/network/`, account, keys, chat `app/src/main/java/com/kutlusoy/nearly/nostr/`. The product features below are not built yet.
-- **See also:** [`guideline-decisions.md`](./guideline-decisions.md) (applies first where it differs), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`permissionlesstech/bitchat`](https://github.com/permissionlesstech/bitchat) (geohash presence), [`kutlusoy/bitnet`](https://github.com/kutlusoy/bitnet) (local AI)
+- **See also:** [`guideline-decisions.md`](./guideline-decisions.md) (applies first where it differs), [`guideline-local-ai.md`](./guideline-local-ai.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`permissionlesstech/bitchat`](https://github.com/permissionlesstech/bitchat) (geohash presence), [`kutlusoy/bitnet`](https://github.com/kutlusoy/bitnet) (local AI), [`kutlusoy/models`](https://github.com/kutlusoy/models) (model packs)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional. Nostr event kinds follow the NIPs and the BitChat documentation as known when this draft was written and MUST be checked against the current texts before implementation.
 
@@ -36,9 +36,9 @@ Rules for the design:
 ## 3. Languages
 
 - **Interface:** the app text is translated into the European languages in steps. The code and the repository stay English, the translations live in the Android string resources (`values-xx`). Right-to-left support is not needed for the first set.
-- **Translation of content:** chats, posts and profiles can be translated on the device (section 7). The sender's language is detected on the device.
+- **Translation of content:** chats, posts and profiles can be translated on the device (section 8). The sender's language is detected on the device.
 - **First set (proposal):** German, English, French, Spanish, Italian, Portuguese, Dutch, Polish and Turkish. Further languages follow by demand and by the availability of open translation models, for example Czech, Romanian, Swedish, Danish, Finnish, Greek, Hungarian, Bulgarian and Ukrainian. The goal is the official languages of the European Union plus Turkish and other languages spoken in Europe.
-- **Language packs:** every language is a separate download (section 7.2), the user installs only the languages needed. English acts as the common pivot, so a pair without a direct model translates through English.
+- **Language packs:** every language is a separate download (section 8.2), the user installs only the languages needed. English acts as the common pivot, so a pair without a direct model translates through English.
 - **Profile language:** every user sets spoken languages in the profile. They are used as a filter and for the translation suggestion.
 
 ## 4. Account and registration
@@ -108,7 +108,7 @@ BitChat uses Nostr for location based chat: a position becomes a **geohash** in 
 
 ## 8. Local AI
 
-The local AI is part of the concept from the first draft: very small, on the device, no cloud. It helps with translation, short summaries, simple suggestions, a spam and bot filter, and replies in chats.
+The local AI is part of the concept from the first draft: very small, on the device, no cloud. It helps with translation, short summaries, simple suggestions, a spam and bot filter, and replies in chats. The rules for models, packs and downloads are in [`guideline-local-ai.md`](./guideline-local-ai.md).
 
 ### 8.1 Tasks
 
@@ -128,8 +128,8 @@ The local AI is part of the concept from the first draft: very small, on the dev
 - **Translation across Europe.** Small open translation models exist per language pair. They are small enough (tens of MB per pair) to install per language. English is the pivot. The models and their licenses MUST be checked per language before they ship. A language without a usable open model stays out of the first set.
 - **Candidates for the language model.** BitNet b1.58 2B (2.4 billion parameters, 1.58 bit weights) from `kutlusoy/bitnet` and the Falcon-E and Falcon3 1.58 bit models of 1 to 3 billion parameters. The `bitnet.cpp` documentation lists CPU kernels for ARM and x86 and calls the 2B model "chat-ready". It documents no Android build, so an NDK cross build is part of the work. The BitNet embedding models are documented for x86 only and cannot be used on phones yet.
 - **Reply suggestions in many languages.** Small models are usually strong in English and weaker in other languages, especially smaller European ones. Reply suggestions therefore start in the languages where a model passes a quality test on real phones, and other languages use the translation chain (suggest in English, translate to the target language). Quality MUST be tested per language before it is offered.
-- **Size.** The goal of the first draft: 100 to 300 MB per part, at most about 1 GB in total. A 2B model is likely at the upper end or above, and every language pack adds to it. This is to be measured, not assumed. The app shows the storage use per language and lets the user remove packs.
-- **Models are not part of the APK.** They are downloaded after the user agrees, through Tor, with a SHA-256 check against a signed list, and stored in private app storage. The AI features switch on only after the download.
+- **Size.** Models are small. The goal of the first draft: 100 to 300 MB per part, at most about 1 GB in total. A 2B model is likely at the upper end or above, and every language pack adds to it. This is to be measured, not assumed. The app shows the storage use per language and lets the user remove packs.
+- **Delivery.** A small **base pack** (language detection, spam filter, translation English and German) is part of the build, so the first translation works at once and offline. **All other packs are downloaded** from the models repository [`kutlusoy/models`](https://github.com/kutlusoy/models) (folder `nearly/`), over HTTPS only, through Tor by default, with a check against a manifest that is signed with an offline key. The AI features of a pack switch on only after it is installed.
 - **Devices.** The AI needs a minimum of RAM (about 4 GB is assumed, to be measured). On weaker phones the features stay off and the rest of the app works.
 - **Privacy rules (MUST).** All AI work runs on the device. No chat text, photo or profile data goes to a server for the AI. No telemetry. The AI never reads private chats unless the user uses the feature in that chat.
 - **No false authority.** Suggestions are labeled as suggestions. The AI never decides about people (no automatic block, no ranking of people by looks).
@@ -138,7 +138,7 @@ The local AI is part of the concept from the first draft: very small, on the dev
 
 - Which model for reply suggestions, and in which languages does it reach the quality bar?
 - Which translation models and which language pairs ship first, and what are their licenses?
-- Where do the models live (GitHub releases, a blob server) and who signs the model list?
+- Who holds the signature key of the manifest and how is it backed up?
 
 ## 9. Rules the store and the law require
 
@@ -156,12 +156,12 @@ All relay traffic and all downloads run through Tor as in `guideline-tor-and-i2p
 
 | Version | Content |
 |---|---|
-| 0.0.x | skeleton, network layer, keys and account, Nostr events and relay client, encrypted chat primitives (done) |
-| 0.1 | relay reconnect and list, profile, text and photo posts, follows, screens for registration and sign in, English and German interface |
+| 0.0.x | skeleton, network layer, keys and account, Nostr events and relay client with reconnect, encrypted chat primitives (done) |
+| 0.1 | profile, text and photo posts, follows, screens for registration and sign in, English and German interface |
 | 0.2 | swipe mode with private interest signal, chat screens |
 | 0.3 | map mode with geohash presence |
 | 0.4 | private photos with expiring blobs, stories, more interface languages |
-| 0.5 | local AI: translation first (first language set), then reply suggestions and filters |
+| 0.5 | local AI: base pack and translation first (first language set), then reply suggestions and filters |
 | 1.0 | age gate, report and block, store release |
 
 ## 12. Open Questions
@@ -169,7 +169,7 @@ All relay traffic and all downloads run through Tor as in `guideline-tor-and-i2p
 1. Blob server for expiring private photos over Tor, and does the project run its own?
 2. Age as an exact number or a range in the profile?
 3. Which public relays are reachable through Tor and accept the event kinds we use?
-4. Local AI: which models, which languages first, where do the models live?
+4. Local AI: which models, which languages first?
 5. How are takedown and legal contact handled without administrators?
 6. Is 64 MiB for the account derivation acceptable on the weakest supported phones?
 7. Is the first language set (German, English, French, Spanish, Italian, Portuguese, Dutch, Polish, Turkish) right, and which languages come next?
