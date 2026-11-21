@@ -1,9 +1,9 @@
 # Nearly: Local AI Guideline
 
-- **Version:** 0.2 (draft)
+- **Version:** 0.3 (draft)
 - **Date:** November 21, 2026
 - **Audience:** Android developers, release engineers and whoever prepares the models
-- **Reference implementation:** none yet, the folder `models/` holds the manifest
+- **Reference implementation:** none yet. The models repository: [`kutlusoy/models`](https://github.com/kutlusoy/models), folder `nearly/`
 - **Fork base:** [`microsoft/BitNet`](https://github.com/microsoft/BitNet) as `kutlusoy/bitnet` (`bitnet.cpp`, CPU kernels, models)
 - **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) section 8, [`guideline-decisions.md`](./guideline-decisions.md) rows 23 to 26, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
 
@@ -15,7 +15,7 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 - **Small.** Every model is as small as it can be for its task. A task that a small classifier or a small translation model solves does not get a language model.
 - **On the device.** All AI work runs on the phone. Nothing from a chat, photo or profile goes to a server for the AI. No telemetry.
-- **Two ways to get a model:** inside the build (the base pack) or downloaded from the repository (all other packs).
+- **Two ways to get a model:** inside the build (the base pack) or downloaded from the models repository (all other packs).
 - **Optional.** Without any pack the app works fully. Each feature switches on when its pack is present.
 - **Languages:** the translation covers the European languages of the product concept, the interface is translated into the same languages.
 
@@ -35,21 +35,24 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 ## 3. Where the packs live
 
-Everything is in this repository, in the folder `models/`.
+In a separate repository, **`kutlusoy/models`**, which holds one folder per app. Nearly uses the folder `nearly/`. Other apps of the same owner can use the repository with their own folder.
 
-- **In the git tree (small text files only):** `models/models.json` (the manifest), `models/models.json.sig` (its signature), `models/licenses/`, `models/scripts/`, `models/README.md`.
-- **Release assets of this repository:** the model files themselves, attached to a release with the tag `models-<version>`. Reason: GitHub rejects single files above 100 MB in the git tree, and every binary that is committed stays in the history forever and makes every clone larger. Release assets avoid both. The limits of GitHub MUST be checked again before the first model release.
-- **Manifest:** one entry per pack: id, version, language, task, size, SHA-256, download URL, license, minimum RAM, minimum app version. The manifest is signed.
-- **Inside the build:** the base pack is put into the app assets by the release workflow. The workflow takes the files from the model release by the hash that is pinned in the repository, so the build is reproducible.
+- **In the git tree (text files only):** `nearly/models.json` (the manifest), `nearly/models.json.sig` (its signature), `nearly/licenses/`, the shared `scripts/` and the checks.
+- **Release assets:** the model files themselves, attached to releases with tags `nearly-v<version>`. Reason: GitHub rejects single files above 100 MB in the git tree, and every binary that is committed stays in the history forever. Release assets avoid both. The limits of GitHub MUST be checked again before the first model release. Git LFS is not used because of its download quota.
+- **Manifest:** one entry per pack: id, type, version, task, language, size, SHA-256, download URL, license, license file, minimum RAM, minimum app version. Fields and rules are in the README of the models repository and are checked by `scripts/check_manifest.py`.
+- **Signature:** Ed25519 over the exact bytes of `models.json`, made on an offline machine. The private key never goes into GitHub. The public key is built into the app.
+- **Replay protection:** the manifest has a `sequence` number that grows with every change. The app refuses a signed manifest with a lower number than the last one it saw.
+- **Where the app reads it:** `models.json` and `models.json.sig` from the default branch of the models repository, the packs from the release URLs of the manifest.
+- **Inside the build:** the base pack is put into the app assets by the release workflow. The workflow takes the file from the release named in the manifest and checks it against the hash that is pinned in the app repository, so the build is reproducible.
 - **Transport:** HTTPS only. Plain HTTP MUST NOT be used. By default downloads go through Tor like the rest of the traffic. A download over a direct connection is possible only when the user chooses it (for example on Wi-Fi for a large pack), because the files are public and do not carry personal data. GitHub redirects release downloads to a CDN host, so the client follows the redirect over HTTPS and checks the final host against a list.
-- **Checks (MUST):** SHA-256 of the file against the signed manifest, signature of the manifest with a public key that is built into the app, size limit, free storage check. A file that fails is deleted and never loaded.
+- **Checks (MUST):** signature of the manifest, SHA-256 and size of every file against the manifest, free storage. A file that fails is deleted and never loaded.
 - **Install:** download to a temporary file in private app storage, resume with HTTP range requests, verify, then move to the final place in one step. A pack is active only after the check.
 - **Update:** the app checks the manifest at most once a day while the user has packs installed, and only through the configured network path.
 
 ## 4. Build
 
-- A models workflow in this repository (`.github/workflows/models.yml`, not written yet) builds or converts the model files, writes the manifest, signs it, attaches the files to a release `models-<version>` and commits the manifest and signature into `models/`.
-- The app release workflow fetches the base pack by the pinned hash, checks it and puts it into the assets. A changed hash needs a commit, so the base pack never changes silently.
+- Publishing a pack follows the steps in `nearly/README.md` of the models repository: release with the files, manifest entry with size and hash, check, offline signature, commit.
+- The app release workflow fetches the base pack from the models release, checks the pinned hash and puts it into the assets. A changed hash needs a commit in the app repository, so the base pack never changes silently.
 - Native code (`bitnet.cpp` or another runtime) is cross built with the NDK in the same pinned container as Tor and i2pd. `bitnet.cpp` documents CPU kernels for ARM and x86 and no Android build, so the Android build is a work item and not a given.
 - **Store size:** an app bundle for Google Play has size limits for the base module. A large pack MUST NOT go into the base module. If a pack should be offered through Google Play later, Play asset delivery is an option. The current limits MUST be checked before that.
 
@@ -93,10 +96,10 @@ A pack is offered in a language only if the quality test passes for that languag
 
 ## 9. Checklist
 
-- [x] Folder `models/` with a README and an empty manifest
-- [ ] Models workflow with a signed manifest and release assets
-- [ ] Signature key created offline, public key built into the app
-- [ ] Download client: HTTPS, Tor by default, resume, checksum, signature, atomic install
+- [x] Models repository `kutlusoy/models` with the folder `nearly/`, manifest schema, checks and offline signing scripts
+- [ ] Signature key created offline, backups made, public key built into the app
+- [ ] First pack published (release, manifest entry, signature)
+- [ ] Download client in the app: HTTPS, Tor by default, resume, checksum, signature, sequence check, atomic install
 - [ ] Base pack in the app release workflow by a pinned hash
 - [ ] `bitnet.cpp` or another runtime cross built for Android
 - [ ] Test plan run on three phones
