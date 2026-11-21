@@ -13,3 +13,12 @@ val SamplePeople = listOf(
     Person("sofia", "Sofia", 26, 3.6, "Dancing in the kitchen since 1999.", Color(0xFFA855F7), Color(0xFFF0ABFC)),
     Person("nico", "Nico", 33, 4.2, "Board games and long dinners.", Color(0xFF334155), Color(0xFF64748B)),
 )
+
+data class Post(val id: String, val person: Person, val caption: String, val minutesAgo: Int, val likes: Int)
+
+val SamplePosts = listOf(
+    Post("p1", SamplePeople[0], "Sunday climbing, finally reached the top.", 12, 24),
+    Post("p2", SamplePeople[1], "This week's loaf. The crust says it all.", 95, 58),
+    Post("p3", SamplePeople[2], "The river was calm this morning.", 260, 31),
+    Post("p4", SamplePeople[3], "Golden hour at the old bridge.", 1100, 112),
+)

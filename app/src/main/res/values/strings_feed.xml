@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="feed_likes">
+        <item quantity="one">%d like</item>
+        <item quantity="other">%d likes</item>
+    </plurals>
+    <string name="feed_comment">Comment</string>
+    <string name="feed_share">Share</string>
+    <string name="feed_minutes">%1$d min ago</string>
+    <string name="feed_hours">%1$d h ago</string>
+    <string name="feed_days">%1$d d ago</string>
+</resources>
