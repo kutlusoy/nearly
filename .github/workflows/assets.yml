@@ -1,0 +1,37 @@
+name: Brand assets
+
+# Renders the PNG pictures from design/*.svg and publishes them as the artifact "brand-assets".
+# Commit the three files to the repository when the logo changes.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'design/**'
+      - '.github/workflows/assets.yml'
+
+jobs:
+  render:
+    name: Render store icon, logo and social preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Render
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node design/generate-assets.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brand-assets
+          path: |
+            app/src/main/ic_launcher-playstore.png
+            doc/logo.png
+            doc/social-preview.png
+          if-no-files-found: error

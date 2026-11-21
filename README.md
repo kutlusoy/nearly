@@ -1,3 +1,5 @@
+<p align="center"><img src="design/nearly_logo.svg" alt="Nearly" width="480"></p>
+
 # Nearly
 
 Map based, decentralized social app for local discovery. Native Android app (Kotlin), Nostr for identity, follows and encrypted chats, TOR/I2P first networking, small on-device AI.
@@ -20,3 +22,7 @@ Requires JDK 17 and the Android SDK (compile SDK 36). The CI uses Gradle 8.14.3.
 
 - [`doc/guideline-release-signing.md`](doc/guideline-release-signing.md): release keystore, GitHub secrets, release and test workflows
 - [`doc/guideline-google-play.md`](doc/guideline-google-play.md): certificate fingerprint, package registration, Play App Signing
+
+## Branding
+
+- [`doc/guideline-splash-and-icons.md`](doc/guideline-splash-and-icons.md): logo, launcher icon, splash screen and how the brand pictures are generated
