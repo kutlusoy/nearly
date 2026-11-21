@@ -24,6 +24,7 @@ android {
         versionCode computedVersionCode
         versionName versionText
         buildConfigField 'int', 'TEST_BUILD', (project.findProperty('testBuild') ?: '0').toString()
+        ndk { abiFilters += ['arm64-v8a', 'x86_64'] }
     }
 
     signingConfigs {
@@ -85,6 +86,8 @@ android {
     }
 
     packaging {
+        // Tor and i2pd are executables that must be extracted to the native library directory to be started
+        jniLibs.useLegacyPackaging = true
         resources {
             excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1', 'META-INF/*.kotlin_module']
         }

@@ -1,0 +1,40 @@
+name: Helpers
+
+# Builds libtor.so and libi2pd.so for all ABIs and publishes them as the artifact "helpers".
+# Releases and test releases use it, CI builds without the helpers.
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build Tor and i2pd
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pin the NDK checksum
+        run: |
+          source native-build/ndk.env
+          if [[ -z ${NDK_SHA256:-} ]]; then
+            NDK_SHA256=$(bash native-build/pin-ndk.sh)
+            echo "::warning::NDK_SHA256 is not pinned in native-build/ndk.env. This run used $NDK_SHA256. Compare it with Google's published checksum and pin it."
+          fi
+          echo "NDK_SHA256=$NDK_SHA256" >> "$GITHUB_ENV"
+
+      - uses: actions/cache@v4
+        with:
+          path: native-build/build-cache/helpers-deps
+          key: helpers-deps-${{ hashFiles('native-build/helpers/**', 'native-build/helpers-source.env', 'native-build/ndk.env') }}
+
+      - name: Build
+        run: bash native-build/build-helpers.sh all
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: helpers
+          path: |
+            app/src/main/jniLibs
+            app/src/main/assets/i2pd
+            app/src/main/assets/network-manifest
+          if-no-files-found: error

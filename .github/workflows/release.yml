@@ -17,8 +17,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  helpers:
+    uses: ./.github/workflows/helpers.yml
+
   release:
     name: Build and publish release
+    needs: helpers
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -34,6 +38,22 @@ jobs:
           python3 -I tools/version.py "$wanted" > "$RUNNER_TEMP/version.out"
           cat "$RUNNER_TEMP/version.out"
           awk -F= '{ print toupper($1) "=" $2 }' "$RUNNER_TEMP/version.out" >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: helpers
+          path: app/src/main
+
+      - name: Check the Tor and I2P helpers
+        run: |
+          for abi in arm64-v8a x86_64; do
+            manifest=app/src/main/assets/network-manifest/helpers-$abi.env
+            [[ -f $manifest ]] || { echo "::error::$manifest is missing"; exit 1; }
+            source "$manifest"
+            [[ $(sha256sum app/src/main/jniLibs/$abi/libtor.so | cut -d' ' -f1) == "$TOR_LIB_SHA256" ]] || { echo "::error::libtor.so for $abi does not match its manifest"; exit 1; }
+            [[ $(sha256sum app/src/main/jniLibs/$abi/libi2pd.so | cut -d' ' -f1) == "$I2PD_LIB_SHA256" ]] || { echo "::error::libi2pd.so for $abi does not match its manifest"; exit 1; }
+            echo "$abi: tor $TOR_TAG, i2pd $I2PD_TAG"
+          done
 
       - uses: actions/setup-java@v4
         with:

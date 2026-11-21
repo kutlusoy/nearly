@@ -18,8 +18,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  helpers:
+    uses: ./.github/workflows/helpers.yml
+
   test-release:
     name: Build and publish the test release
+    needs: helpers
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -33,6 +37,11 @@ jobs:
             echo "::error::app/debug.keystore is missing. See doc/guideline-release-signing.md, section Test key."
             exit 1
           fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: helpers
+          path: app/src/main
 
       - uses: actions/setup-java@v4
         with:
