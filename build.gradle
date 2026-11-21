@@ -7,5 +7,6 @@ plugins {
 ext {
     compileSdkVersion = 36
     targetSdkVersion = 36
-    minSdkVersion = 24
+    // The code uses java.nio.file and java.util.Base64, both need Android 8.0 (API 26)
+    minSdkVersion = 26
 }
