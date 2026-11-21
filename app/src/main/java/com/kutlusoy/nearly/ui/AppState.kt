@@ -20,6 +20,8 @@ data class AppState(
     val tab: Tab = Tab.Swipe,
     val themeMode: ThemeMode = ThemeMode.Light,
     val settingsOpen: Boolean = false,
+    val discoveryOpen: Boolean = false,
+    val discovery: DiscoveryFilter = DiscoveryFilter(),
     val busy: Boolean = false,
     val error: AppError? = null,
 )

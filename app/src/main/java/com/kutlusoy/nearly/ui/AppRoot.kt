@@ -46,16 +46,30 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 onSubmit = viewModel::submitSignIn,
             )
             Screen.Main -> state.account?.let { account ->
-                if (state.settingsOpen) {
+                if (state.discoveryOpen) {
+                    DiscoveryScreen(
+                        filter = state.discovery,
+                        onChange = viewModel::updateDiscovery,
+                        onBack = { viewModel.openDiscovery(false) },
+                    )
+                } else if (state.settingsOpen) {
                     SettingsScreen(
                         account = account,
                         themeMode = state.themeMode,
                         onTheme = viewModel::setTheme,
                         onBack = { viewModel.openSettings(false) },
                         onSignOut = viewModel::signOut,
+                        onDiscovery = { viewModel.openDiscovery(true) },
                     )
                 } else {
-                    MainScreen(account = account, tab = state.tab, onTab = viewModel::selectTab, onSettings = { viewModel.openSettings(true) })
+                    MainScreen(
+                        account = account,
+                        tab = state.tab,
+                        onTab = viewModel::selectTab,
+                        onSettings = { viewModel.openSettings(true) },
+                        discovery = state.discovery,
+                        onFilters = { viewModel.openDiscovery(true) },
+                    )
                 }
             }
         }
