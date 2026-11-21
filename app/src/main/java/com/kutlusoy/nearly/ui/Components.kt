@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.ui.theme.NearlyColors
 
@@ -50,6 +51,11 @@ fun BrandMark(icon: ImageVector, size: Int = 96, modifier: Modifier = Modifier) 
         Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size((size / 2).dp))
     }
 }
+
+// The Nearly logo: the pin on the rose circle, the same picture as the launcher icon and the splash screen
+@Composable
+fun NearlyLogo(size: Int = 96, modifier: Modifier = Modifier) =
+    BrandMark(ImageVector.vectorResource(R.drawable.ic_nearly_pin), size, modifier)
 
 @Composable
 fun BusyOverlay(title: String, help: String) {
