@@ -1,5 +1,9 @@
 name: Release
 
+# With the repository secrets NEARLY_KEYSTORE_BASE64, NEARLY_KEYSTORE_PASSWORD and NEARLY_KEY_ALIAS the release is built and signed with the release key.
+# Without them the workflow builds a test release signed with the public test key and marks it as a pre-release.
+# If only some of the secrets are set, the workflow stops, because that is a mistake.
+
 on:
   push:
     tags: ['v*']
@@ -23,6 +27,8 @@ jobs:
   release:
     name: Build and publish release
     needs: helpers
+    # Runs also when the helper build failed: a test release does not need Tor and I2P yet, a signed release does
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -39,13 +45,46 @@ jobs:
           cat "$RUNNER_TEMP/version.out"
           awk -F= '{ print toupper($1) "=" $2 }' "$RUNNER_TEMP/version.out" >> "$GITHUB_ENV"
 
-      - uses: actions/download-artifact@v4
+      - name: Check for the release key
+        id: key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NEARLY_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.NEARLY_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NEARLY_KEY_ALIAS }}
+        run: |
+          set=0
+          for value in "$KEYSTORE_BASE64" "$KEYSTORE_PASSWORD" "$KEY_ALIAS"; do [[ -n $value ]] && set=$((set + 1)); done
+          if [[ $set == 3 ]]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "The release key is set, building the signed release."
+          elif [[ $set == 0 ]]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No release key secrets found. Building a TEST release signed with the public test key, see doc/guideline-release-signing.md."
+          else
+            echo "::error::Only some of NEARLY_KEYSTORE_BASE64, NEARLY_KEYSTORE_PASSWORD and NEARLY_KEY_ALIAS are set. Set all three or none."
+            exit 1
+          fi
+
+      - name: Download the Tor and I2P helpers
+        if: ${{ needs.helpers.result == 'success' }}
+        uses: actions/download-artifact@v4
         with:
           name: helpers
           path: app/src/main
 
       - name: Check the Tor and I2P helpers
+        env:
+          HELPERS_RESULT: ${{ needs.helpers.result }}
+          SIGNED: ${{ steps.key.outputs.signed }}
         run: |
+          if [[ $HELPERS_RESULT != success ]]; then
+            if [[ $SIGNED == true ]]; then
+              echo "::error::The helper build did not succeed ($HELPERS_RESULT). A signed release must contain Tor and I2P."
+              exit 1
+            fi
+            echo "::warning::The helper build did not succeed ($HELPERS_RESULT). The test release is built without Tor and I2P."
+            exit 0
+          fi
           for abi in arm64-v8a x86_64; do
             manifest=app/src/main/assets/network-manifest/helpers-$abi.env
             [[ -f $manifest ]] || { echo "::error::$manifest is missing"; exit 1; }
@@ -67,19 +106,16 @@ jobs:
       - name: Unit tests
         run: gradle testDebugUnitTest --stacktrace
 
+      # Signed release
+
       - name: Prepare signing
+        if: ${{ steps.key.outputs.signed == 'true' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.NEARLY_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.NEARLY_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.NEARLY_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.NEARLY_KEY_PASSWORD }}
         run: |
-          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS; do
-            if [[ -z ${!name} ]]; then
-              echo "::error::The repository secret for $name is missing. See doc/guideline-release-signing.md."
-              exit 1
-            fi
-          done
           mkdir -p app/signing
           echo "$KEYSTORE_BASE64" | base64 -d > app/signing/release.keystore
           {
@@ -90,9 +126,11 @@ jobs:
           } > app/signing/release.properties
 
       - name: Build signed release APK and bundle
+        if: ${{ steps.key.outputs.signed == 'true' }}
         run: gradle assembleRelease bundleRelease --stacktrace
 
       - name: Collect files
+        if: ${{ steps.key.outputs.signed == 'true' }}
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/release/*.apk "dist/Nearly-$VERSION.apk"
@@ -103,6 +141,7 @@ jobs:
           (cd dist && sha256sum ./*.apk ./*.aab > SHA256SUMS.txt)
 
       - name: Check the APK
+        if: ${{ steps.key.outputs.signed == 'true' }}
         env:
           EXPECTED_CERT_SHA256: ${{ secrets.NEARLY_RELEASE_CERT_SHA256 }}
         run: |
@@ -118,6 +157,7 @@ jobs:
           fi
 
       - name: Check the proof for the Android developer verification
+        if: ${{ steps.key.outputs.signed == 'true' }}
         run: |
           file=app/src/main/assets/adi-registration.properties
           if [[ ! -f $file ]]; then
@@ -133,21 +173,64 @@ jobs:
           fi
 
       - name: Release notes
+        if: ${{ steps.key.outputs.signed == 'true' }}
         run: bash tools/release-notes.sh notes "dist/Nearly-$VERSION.apk" "dist/Nearly-$VERSION.aab" "$VERSION" "$GITHUB_SHA" > dist/NOTES.md
+
+      # Test release
+
+      - name: Prepare the public test key
+        if: ${{ steps.key.outputs.signed != 'true' }}
+        run: |
+          if [[ ! -f app/debug.keystore ]]; then base64 -d app/debug.keystore.b64 > app/debug.keystore; fi
+
+      - name: Build the test APK
+        if: ${{ steps.key.outputs.signed != 'true' }}
+        run: gradle assembleDebug -PtestBuild=${{ github.run_number }} --stacktrace
+
+      - name: Collect test files
+        if: ${{ steps.key.outputs.signed != 'true' }}
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/*.apk "dist/Nearly-$VERSION-test.apk"
+          (cd dist && sha256sum ./*.apk > SHA256SUMS.txt)
+          short=${GITHUB_SHA::7}
+          {
+            echo "TEST build of version $VERSION from commit $short."
+            echo
+            echo "Signed with the public test key of the repository, NOT with the release key. For testing only, not for the store."
+            echo "Application ID: com.kutlusoy.nearly.debug, so it installs next to a real release."
+            if [[ -f app/src/main/jniLibs/arm64-v8a/libtor.so ]]; then echo "Contains Tor and I2P."; else echo "Built without Tor and I2P."; fi
+          } > dist/NOTES.md
 
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
 
-      - name: Create or update the release
+      - name: Create or update the signed release
+        if: ${{ steps.key.outputs.signed == 'true' }}
         run: |
           flags=()
-          [[ $PRERELEASE == true ]] && flags+=(--prerelease)
+          if [[ $PRERELEASE == true ]]; then flags+=(--prerelease); else flags+=(--prerelease=false); fi
           if gh release view "$TAG" >/dev/null 2>&1; then
+            # A test build of the same version is replaced by the signed one
+            for asset in $(gh release view "$TAG" --json assets --jq '.assets[].name' | grep -- '-test' || true); do
+              gh release delete-asset "$TAG" "$asset" --yes
+            done
             gh release upload "$TAG" dist/*.apk dist/*.aab dist/*.txt --clobber
             gh release edit "$TAG" --title "Nearly v$VERSION" --notes-file dist/NOTES.md "${flags[@]}"
           else
             gh release create "$TAG" dist/*.apk dist/*.aab dist/*.txt \
               --target "$GITHUB_SHA" --title "Nearly v$VERSION" --notes-file dist/NOTES.md "${flags[@]}"
+          fi
+
+      - name: Create or update the test release
+        if: ${{ steps.key.outputs.signed != 'true' }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.apk dist/*.txt --clobber
+            gh release edit "$TAG" --title "Nearly v$VERSION (test build)" --notes-file dist/NOTES.md --prerelease
+          else
+            gh release create "$TAG" dist/*.apk dist/*.txt \
+              --target "$GITHUB_SHA" --title "Nearly v$VERSION (test build)" --notes-file dist/NOTES.md --prerelease
           fi

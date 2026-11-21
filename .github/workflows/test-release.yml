@@ -1,7 +1,8 @@
 name: Test release
 
-# Builds the debug app with the test key app/debug.keystore and publishes it as a pre-release.
+# Builds the debug app with the public test key and publishes it as a pre-release test-<number>.
 # No secrets are needed. The app installs next to the real app (application ID com.kutlusoy.nearly.debug).
+# Unlike the Release workflow it does not wait for the Tor and I2P helpers, use it for a quick look at a build.
 
 on:
   workflow_dispatch:
@@ -18,12 +19,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  helpers:
-    uses: ./.github/workflows/helpers.yml
-
   test-release:
     name: Build and publish the test release
-    needs: helpers
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -31,17 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the test key
+      - name: Prepare the public test key
         run: |
-          if [[ ! -f app/debug.keystore ]]; then
-            echo "::error::app/debug.keystore is missing. See doc/guideline-release-signing.md, section Test key."
-            exit 1
-          fi
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: helpers
-          path: app/src/main
+          if [[ ! -f app/debug.keystore ]]; then base64 -d app/debug.keystore.b64 > app/debug.keystore; fi
 
       - uses: actions/setup-java@v4
         with:
@@ -72,6 +61,7 @@ jobs:
             echo
             echo "Signed with the public test key of the repository. For testing only, not for the store."
             echo "Application ID: com.kutlusoy.nearly.debug, so it installs next to the real app."
+            echo "Built without Tor and I2P."
             if [[ -n "$NOTE" ]]; then echo; echo "$NOTE"; fi
           } > dist/NOTES.md
 
