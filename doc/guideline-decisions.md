@@ -1,9 +1,9 @@
 # Nearly: Decision Record
 
-- **Version:** 0.3 (draft)
+- **Version:** 0.4 (draft)
 - **Date:** November 21, 2026
 - **Audience:** All contributors
-- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
+- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md), [`guideline-local-ai.md`](./guideline-local-ai.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
 
 This record holds the decisions of the product owner. Where it differs from an older guideline, this record applies. The product concept is updated to match.
 
@@ -37,6 +37,7 @@ This record holds the decisions of the product owner. Where it differs from an o
 | 22 | Interface style | Close to Instagram (profile, stories, photo grid) and Tinder (swipe cards), with a little of the vertical full-screen feel of TikTok, without video. |
 | 23 | Local AI | Stays part of the product: translation, reply and conversation suggestions, summaries, spam filter, photo blur. All on the device. |
 | 24 | Languages | Not only German, English and Turkish but other European languages as well, for the interface and for the translation by the local AI. First set as a proposal: German, English, French, Spanish, Italian, Portuguese, Dutch, Polish, Turkish. |
+| 25 | Model size and delivery | Models are small. A small base pack is part of the build, all other packs are downloaded from the repository (release assets). Supersedes the rule of the product concept that no model is part of the app. Downloads use HTTPS only (not plain HTTP), are checked against a signed manifest and checksums, and go through Tor by default. Details in `guideline-local-ai.md`. |
 
 ## 2. Consequences
 
@@ -46,6 +47,7 @@ This record holds the decisions of the product owner. Where it differs from an o
 - **Username as public name:** uniqueness cannot be guaranteed on Nostr. The public key is the real identity, the username is a label. The UI shows a short part of the key next to the name to tell people apart.
 - **Derived key:** the password is the only secret and the public key allows offline guessing. The strength of the password and the cost of the derivation are the whole protection, see `guideline-nostr-keys.md`.
 - **Many languages:** every language is a separate download for the AI, with its own storage use and a quality check. Reply suggestions are offered only in languages that pass the quality test, other languages use English and the translation chain. The store listing needs a text per language.
+- **Model delivery:** the base pack adds to every APK and update, so it is limited in size. Packs are public files, so a direct download is possible when the user chooses it, plain HTTP is never used. The signature key of the manifest is a critical secret.
 
 ## 3. Open Questions
 
@@ -54,3 +56,4 @@ This record holds the decisions of the product owner. Where it differs from an o
 3. Which public relays are reachable through Tor and accept the event kinds we use?
 4. Is 64 MiB for the key derivation acceptable on the weakest supported phones?
 5. Is the first language set right, and which languages come next?
+6. Separate models repository or release assets of the app repository?
