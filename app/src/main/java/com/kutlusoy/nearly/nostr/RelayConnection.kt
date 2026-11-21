@@ -35,6 +35,11 @@ class RelayConnection(
     var state: State = State.Idle
         private set
 
+    // True when retrying cannot help: a blocked route, a refused unencrypted address or an invalid address
+    @Volatile
+    var permanentFailure: Boolean = false
+        private set
+
     private var socket: WebSocket? = null
 
     fun connect(listener: RelayListener) {
@@ -60,6 +65,11 @@ class RelayConnection(
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 RelayMessage.parse(text)?.let { listener.onMessage(it) }
+            }
+
+            // A relay that closes on its own side must be answered, otherwise the connection stays half open and nobody notices
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(code, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -90,6 +100,7 @@ class RelayConnection(
     private fun send(text: String): Boolean = state == State.Open && socket?.send(text) == true
 
     private fun fail(listener: RelayListener, reason: String) {
+        permanentFailure = true
         state = State.Closed
         listener.onClosed(reason)
     }
