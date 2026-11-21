@@ -1,4 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Nearly</string>
+
+    <string name="common_back">Back</string>
+    <string name="common_continue">Continue</string>
+    <string name="step_of">Step %1$d of %2$d</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+
+    <string name="welcome_tagline">Meet people near you.\nPrivate by design.</string>
+    <string name="welcome_create">Create account</string>
+    <string name="welcome_sign_in">Sign in</string>
+    <string name="welcome_footer">No server and no tracking. Your account is made from your username, your e-mail and five words.</string>
+
+    <string name="reg_username_title">Choose a username</string>
+    <string name="reg_username_label">Username</string>
+    <string name="reg_username_help">This is your public name. 3 to 24 letters, digits, dot, dash or underscore.</string>
+    <string name="err_username_short">At least 3 characters.</string>
+    <string name="err_username_long">At most 24 characters.</string>
+    <string name="err_username_chars">Only letters, digits, dot, dash and underscore, and it must start with a letter or digit.</string>
+
+    <string name="reg_email_title">Your e-mail</string>
+    <string name="reg_email_label">E-mail</string>
+    <string name="reg_email_again">Repeat e-mail</string>
+    <string name="reg_email_help">Only used to restore your account on another phone. It is never sent anywhere and nobody sees it. Type it carefully: a typo opens a different account.</string>
+    <string name="err_email_invalid">This does not look like an e-mail address.</string>
+    <string name="err_email_mismatch">The two e-mail addresses are different.</string>
+
+    <string name="reg_words_title">Your recovery words</string>
+    <string name="reg_words_help">These five words are the secret of your account. Together with your username and your e-mail they bring your account back on any phone.</string>
+    <string name="reg_words_new">New words</string>
+    <string name="reg_words_copy">Copy</string>
+    <string name="reg_words_warning">Write them down and keep them safe. Anyone who has them, your username and your e-mail can take over your account. There is no reset: if you lose the words, you lose the account. The words cannot be changed later.</string>
+    <string name="reg_words_confirm">I wrote them down</string>
+
+    <string name="reg_birth_title">Your date of birth</string>
+    <string name="reg_birth_day">Day</string>
+    <string name="reg_birth_month">Month</string>
+    <string name="reg_birth_year">Year</string>
+    <string name="reg_birth_help">You must be 18 or older. Your profile shows your age, the date of birth stays on this phone.</string>
+    <string name="err_date_invalid">This date does not exist.</string>
+    <string name="err_under_age">Nearly is only for people aged 18 or older.</string>
+
+    <string name="reg_create">Create account</string>
+    <string name="reg_creating">Creating your account</string>
+    <string name="reg_creating_help">This takes a few seconds.</string>
+    <string name="reg_exists">An account with this username and e-mail is already on this phone. Please sign in.</string>
+
+    <string name="signin_title">Sign in</string>
+    <string name="signin_words_label">Your five recovery words</string>
+    <string name="signin_words_count">%1$d of 5 words</string>
+    <string name="signin_button">Sign in</string>
+    <string name="signin_busy">Signing in</string>
+    <string name="signin_help">On a new phone, check every entry carefully: a wrong entry opens a different, empty account.</string>
+    <string name="signin_wrong">That did not work. Check your username, e-mail and words.</string>
+
+    <string name="tab_swipe">Swipe</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_feed">Feed</string>
+    <string name="tab_chats">Chats</string>
+    <string name="tab_profile">Profile</string>
+    <string name="swipe_soon">Swipe through people near you.</string>
+    <string name="map_soon">See who is active around you.</string>
+    <string name="feed_soon">Photos and posts of the people you follow.</string>
+    <string name="chats_soon">Private, end to end encrypted chats.</string>
+    <string name="soon_badge">Coming soon</string>
+
+    <string name="profile_age">%1$d years</string>
+    <string name="profile_id">Your ID</string>
+    <string name="profile_sign_out">Sign out</string>
+    <string name="profile_version">Version %1$s</string>
+    <string name="profile_test_note">This is an early test version. Not everything works yet.</string>
 </resources>
