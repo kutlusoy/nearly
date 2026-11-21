@@ -1,10 +1,10 @@
-# Nearly: Nostr Key Management Guideline
+# Nearly: Account and Key Guideline
 
-- **Version:** 0.1 (draft)
+- **Version:** 0.2 (draft)
 - **Date:** November 21, 2026
 - **Audience:** Android developers of Nearly, security reviewers
 - **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/nostr/`, tests in `app/src/test/java/com/kutlusoy/nearly/nostr/`
-- **See also:** [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md), [NIP-49](https://github.com/nostr-protocol/nips/blob/master/49.md)
+- **See also:** [`guideline-decisions.md`](./guideline-decisions.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md), [NIP-49](https://github.com/nostr-protocol/nips/blob/master/49.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
 
@@ -12,64 +12,71 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 ## 1. Model
 
-The identity of a user is a Nostr key pair (secp256k1). The private key is generated on the device and stored only in encrypted form. The user logs in with **username, e-mail and password**. The password decrypts the key. Username and e-mail are not part of the key and are not sent anywhere by the key management.
+The Nostr key of a user follows from **username, e-mail and password**. The same three entries give the same identity on every device, so an account can always be restored without a server, a backup file or a relay. Username and e-mail are the salt, the password is the only secret.
 
-## 2. Components
+The public key is public. Anyone who knows username and e-mail can try passwords offline and compare the result with the public key. Nothing limits the number of tries. The whole protection is the password and the cost of the key derivation. Therefore the password MUST have enough entropy.
+
+## 2. The password
+
+- The app generates **5 random words** from the BIP-39 English list (`Passphrase.generate()`), 11 bits per word, 55 bits in total. The user writes them down or stores them in a password manager.
+- Input is tolerant: upper or lower case, spaces, hyphens and commas are all accepted and give the same key (`Passphrase.canonical()`).
+- Own passwords are accepted only when a rough estimate reaches 55 bits (`PasswordPolicy`). The estimate halves the value of a random character formula on purpose, because people choose patterns. Repeated words count once. A password that contains the username is refused.
+- Why 5 and not 3 words: 3 words are 33 bits and are searched in hours at one million tries per second. 5 words need more than a thousand years at the same speed.
+- **The password cannot be changed.** A new password is a new key and therefore a new identity. The UI MUST say this at account creation.
+- **E-mail typos create another identity silently.** The UI MUST ask for the e-mail twice at account creation and SHOULD warn at sign in when no profile exists for the derived key.
+
+## 3. Components
 
 | File | Purpose |
 |---|---|
-| `Bech32.kt` | bech32 for `npub`, `nsec` and `ncryptsec` (no 90 character limit) |
-| `NostrKeys.kt` | key generation, x-only public key (BIP-340), NIP-19 encoding and decoding of `npub` and `nsec`, hex |
-| `Nip49.kt` | password encryption of the key: scrypt, XChaCha20-Poly1305, `ncryptsec` |
-| `PasswordPolicy.kt` | live feedback while typing: which rules are met and a strength from 0 to 4 |
-| `AccountId.kt` | stable id from username and e-mail (normalized, scrypt), names the local key file |
+| `Passphrase.kt` | BIP-39 word list (2048 words, `src/main/resources/bip39/english.txt`), generator, tolerant parsing, canonical form |
+| `KeyDerivation.kt` | Argon2id (64 MiB, 4 passes) over the canonical password with a salt from username and e-mail, result is the private key |
+| `PasswordPolicy.kt` | entropy estimate, strength 0 to 4 for the live display, username rule |
+| `KeyVault.kt` | sign up, sign in, export `nsec`, forget the local copy, and the in-memory `Session` |
+| `AccountId.kt` | stable local id from username and e-mail, names the local file |
 | `EncryptedKeyStore.kt` | store interface and a file implementation (atomic write, private directory) |
-| `KeyVault.kt` | create, import, unlock, export, change password, delete, and the in-memory `Session` |
+| `NostrKeys.kt`, `Bech32.kt` | key pair, `npub` and `nsec` (NIP-19) |
+| `Nip49.kt` | password encryption of the local copy (scrypt, XChaCha20-Poly1305) |
 
-The crypto uses the lightweight API of Bouncy Castle (`bcprov-jdk18on`): secp256k1 parameters, scrypt and ChaCha20-Poly1305. HChaCha20 for the 24 byte nonce is implemented in `Nip49.kt`.
+## 4. Rules
 
-## 3. Rules
+- **Sign up (MUST):** refuse weak passwords (`WeakPasswordException`), derive the key, store a copy encrypted with the password (NIP-49) on the device.
+- **Sign in:** on a known device the local copy is decrypted, which is fast and detects a wrong password (`WrongPasswordException`). On a new device the key is derived, which takes some seconds and cannot tell a wrong password from a right one, because every input gives some key. The UI checks the relays for a profile of the derived key.
+- **Memory (MUST):** the clear key exists only in memory inside a `Session` and in short lived buffers that are zeroed after use. `Session.lock()` zeroes it.
+- **Export (MUST):** showing the `nsec` needs the password again. The UI shows a warning and blocks screenshots there.
+- **No secret on servers (MUST):** neither the password nor the key leaves the device. Nothing is stored on a relay.
+- **Cost parameters (MUST NOT change):** username normalization, the salt scheme, the Argon2id parameters and the word canonicalization decide the key. A change would give every user another identity. A test pins the result of the default parameters.
+- **Memory of the phone:** 64 MiB is a compromise for the Android heap. It is not verified on weak devices. A higher cost needs a new scheme version with a migration.
 
-- **Password policy (MUST):** at least 12 characters, lower and upper case letter, digit, special character, and the password does not contain the username. `KeyVault` refuses weaker passwords with `WeakPasswordException`, which carries the rule results for the UI.
-- **Storage (MUST):** only the `ncryptsec` is stored. The clear key exists only in memory inside a `Session` and in short lived buffers that are zeroed after use. `Session.lock()` zeroes the key.
-- **scrypt cost (MUST):** `log_n = 16` (64 MiB) by default, the value is stored in the `ncryptsec`. Decryption rejects values outside 10 to 22, so a manipulated file cannot force a huge allocation.
-- **Export (MUST):** showing the `nsec` needs the password again, also in an open session. The UI MUST show a clear warning and block screenshots on that screen.
-- **Backup (MUST):** after account creation the app shows the `nsec` once and asks the user to store it. A lost password with no `nsec` backup means a lost identity, there is no recovery.
-- **Wrong password:** reported as `WrongPasswordException`. An unknown account is a separate error, so the UI can say which of the two it is. Rate limiting of attempts belongs in the UI layer (open).
-- **Import:** an existing `nsec` can be imported and is then protected like a new key.
-- **No clear key on servers (MUST):** the `nsec` and the password never leave the device.
-
-## 4. Tests
+## 5. Tests
 
 | Test | What it proves |
 |---|---|
-| `KeyCryptoTest` | the HChaCha20 reference vector, the public key of private key 1, the NIP-19 examples, the NIP-49 test vector, round trip, wrong password, damaged checksum |
-| `KeyVaultTest` | password rules, create and unlock, name and e-mail normalization, wrong password and unknown account, duplicates, import, change password, delete, locked session, path tricks in the store |
+| `KeyCryptoTest` | HChaCha20 reference vector, NIP-19 examples, the NIP-49 test vector, round trip, wrong password, damaged checksum |
+| `KeyDerivationTest` | the word list is the BIP-39 list (checksum), generator, tolerant parsing, same input same key, any changed input another key, cost is part of the result, regression value of the default cost |
+| `KeyVaultTest` | password strength, same identity on a new device, wrong password on a known device, duplicates, export, forgetting the local copy, locked session, path tricks in the store |
 
-The crypto functions were checked on the JVM against the published vectors of the NIPs. The Android build with Bouncy Castle and R8 is not yet verified.
+The regression value is computed by this implementation, it is not an external test vector.
 
-## 5. Not yet covered
+## 6. Not yet covered
 
-- **Event signing (BIP-340 Schnorr):** next step, with the Nostr client.
-- **Android hardware protection:** wrapping the stored `ncryptsec` with an Android Keystore key and biometric unlock (opt in) is not implemented.
-- **Relay backup of the encrypted key:** storing the `ncryptsec` on a relay under the account id is not implemented. Open risks: anyone who learns the id can fetch the key and try passwords offline (limited by scrypt and the password policy), and anyone can publish a fake entry under the same id. If it is added it MUST be opt in and use an author-bound event after the first login, not a lookup by tag alone.
-- **Remote signer (NIP-46, Amber):** upgrade path from the draft, not implemented.
-- **Attempt limit and lock after inactivity:** UI layer.
+- **UI:** account creation with the generated words, double e-mail entry, sign in, export screen with screenshot block, attempt limit on the device.
+- **Android Keystore and biometrics** for the local copy (an option later).
+- **Importing an existing Nostr key** is not supported. Such a key could not be restored from username, e-mail and password. It can be added later as a separate kind of account.
+- **Remote signer (NIP-46):** not planned.
+- The Android build with Bouncy Castle (Argon2, scrypt, secp256k1) and R8 is not yet verified.
 
-## 6. Checklist
+## 7. Checklist
 
-- [x] Key generation, `npub` and `nsec`
-- [x] NIP-49 encryption with the published test vector
-- [x] Password policy with live feedback data
-- [x] Local encrypted store, create, import, unlock, export, change password, delete
-- [ ] First Android build with Bouncy Castle and R8
-- [ ] UI: registration, login, backup screen with screenshot block
-- [ ] BIP-340 signing
-- [ ] Android Keystore wrapping, optional biometrics
-- [ ] Decide on the relay backup
+- [x] Passphrase generator with the BIP-39 list
+- [x] Key derivation with Argon2id and a pinned regression value
+- [x] Password policy with entropy estimate
+- [x] Sign up, sign in, export, forget
+- [ ] UI for account creation and sign in
+- [ ] First Android build and a timing check of the derivation on a phone
+- [ ] Android Keystore wrapping (optional)
 
-## 7. Open Questions
+## 8. Open Questions
 
-1. Is a relay backup of the encrypted key wanted at all, given the offline guessing risk?
-2. Should username and e-mail be required for a purely local account, or only for the optional relay backup?
-3. Is an optional passphrase-free mode with only Android Keystore protection acceptable?
+1. Is 64 MiB acceptable on the weakest supported phones, or is a lower cost needed with a longer passphrase (6 words)?
+2. Should the app offer 6 words as an option for users who want more margin?
