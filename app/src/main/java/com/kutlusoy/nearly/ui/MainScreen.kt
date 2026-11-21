@@ -96,6 +96,7 @@ fun MainScreen(account: AccountInfo, tab: Tab, onTab: (Tab) -> Unit, onSettings:
         Column(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
                 Tab.Swipe -> SwipeScreen()
+                Tab.Feed -> FeedScreen()
                 Tab.Profile -> ProfileTab(account, onSettings)
                 else -> SoonTab(tab)
             }
