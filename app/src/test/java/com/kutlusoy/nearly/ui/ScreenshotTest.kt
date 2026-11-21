@@ -9,6 +9,7 @@ import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.registration.RegistrationStep
 import com.kutlusoy.nearly.ui.registration.SignInForm
 import com.kutlusoy.nearly.ui.theme.NearlyTheme
+import com.kutlusoy.nearly.ui.theme.ThemeMode
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -90,8 +91,20 @@ class ScreenshotTest {
     fun swipeTab() = shot("08-main-swipe") { MainScreen(account, Tab.Swipe, {}, {}) }
 
     @Test
+    fun swipeTabDark() = shot("08-main-swipe-dark", dark = true) { MainScreen(account, Tab.Swipe, {}, {}) }
+
+    @Test
+    fun feedTab() = shot("08-main-feed") { MainScreen(account, Tab.Feed, {}, {}) }
+
+    @Test
     fun profileTab() = shot("09-main-profile") { MainScreen(account, Tab.Profile, {}, {}) }
 
     @Test
     fun profileTabDark() = shot("09-main-profile-dark", dark = true) { MainScreen(account, Tab.Profile, {}, {}) }
+
+    @Test
+    fun settings() = shot("10-settings") { SettingsScreen(account, ThemeMode.Light, {}, {}, {}) }
+
+    @Test
+    fun settingsDark() = shot("10-settings-dark", dark = true) { SettingsScreen(account, ThemeMode.Dark, {}, {}, {}) }
 }

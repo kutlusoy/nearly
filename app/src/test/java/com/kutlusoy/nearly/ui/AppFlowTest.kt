@@ -7,11 +7,12 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import com.kutlusoy.nearly.ui.theme.NearlyTheme
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
@@ -43,7 +44,7 @@ class AppFlowTest {
 
     private fun start(): AppViewModel {
         val vm = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
-        rule.setContent { NearlyTheme { AppRoot(vm) } }
+        rule.setContent { AppRoot(vm) }
         return vm
     }
 
@@ -75,10 +76,14 @@ class AppFlowTest {
 
         assertEquals("anna", vm.state.value.account?.username)
         assertTrue(vm.state.value.account!!.npub.startsWith("npub1"))
+        vm.selectTab(Tab.Profile)
         rule.onNodeWithText("anna").assertExists()
         val npub = vm.state.value.account!!.npub
 
+        rule.onNodeWithContentDescription("Settings").performClick()
         rule.onNodeWithText("Sign out").performClick()
+        rule.onNodeWithText("Sign out?").assertExists()
+        rule.onAllNodesWithText("Sign out").onLast().performClick()
         rule.onNodeWithText("Sign in").performClick()
         vm.updateSignIn { it.copy(username = "anna", email = "anna@example.org", words = words) }
         rule.onAllNodesWithText("Sign in").assertCountEquals(2)
