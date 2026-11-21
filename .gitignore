@@ -6,3 +6,8 @@ app/signing/
 *.keystore
 *.jks
 !app/debug.keystore
+native-build/build-cache/
+native-build/out/
+app/src/main/jniLibs/
+app/src/main/assets/i2pd/
+app/src/main/assets/network-manifest/
