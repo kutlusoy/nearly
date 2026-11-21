@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,10 +25,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -35,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +55,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
@@ -65,13 +70,20 @@ enum class SwipeDirection { Like, Later, Skip }
 
 // One card at a time like Tinder: right likes, left means "not now", up skips without a signal
 @Composable
-fun SwipeScreen(people: List<Person> = SamplePeople, onSwiped: (Person, SwipeDirection) -> Unit = { _, _ -> }) {
-    var index by rememberSaveable { mutableIntStateOf(0) }
+fun SwipeScreen(
+    people: List<Person> = SamplePeople,
+    filter: DiscoveryFilter = DiscoveryFilter(),
+    onFilters: () -> Unit = {},
+    onSwiped: (Person, SwipeDirection) -> Unit = { _, _ -> },
+) {
+    val deck = remember(people, filter) { filter.deck(people) }
+    var index by rememberSaveable(deck.map { it.id }) { mutableIntStateOf(0) }
+    var detail by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val offset = remember(index) { Animatable(Offset.Zero, Offset.VectorConverter) }
-    var area by remember { androidx.compose.runtime.mutableStateOf(IntSize.Zero) }
-    val current = people.getOrNull(index)
-    val next = people.getOrNull(index + 1)
+    var area by remember { mutableStateOf(IntSize.Zero) }
+    val current = deck.getOrNull(index)
+    val next = deck.getOrNull(index + 1)
     val threshold = area.width * 0.3f
 
     fun finish(direction: SwipeDirection) {
@@ -99,12 +111,26 @@ fun SwipeScreen(people: List<Person> = SamplePeople, onSwiped: (Person, SwipeDir
         if (direction != null) finish(direction) else scope.launch { offset.animateTo(Offset.Zero, spring(Spring.DampingRatioMediumBouncy)) }
     }
 
+    if (detail && current != null) {
+        PersonDetail(
+            person = current,
+            onClose = { detail = false },
+            onAction = { direction ->
+                detail = false
+                finish(direction)
+            },
+        )
+        return
+    }
     Column(Modifier.fillMaxSize()) {
         NearlyTopBar {
             AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) })
+            IconButton(onClick = onFilters) {
+                Icon(ImageVector.vectorResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.swipe_filters))
+            }
         }
         if (current == null) {
-            EmptyDeck(onAgain = { index = 0 })
+            EmptyDeck(noMatch = deck.isEmpty(), onAgain = { index = 0 }, onFilters = onFilters)
         } else {
             Box(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp).onSizeChanged { area = it },
@@ -114,7 +140,7 @@ fun SwipeScreen(people: List<Person> = SamplePeople, onSwiped: (Person, SwipeDir
                     PersonCard(
                         next,
                         Modifier.fillMaxSize().graphicsLayer { scaleX = 0.94f + 0.06f * progress; scaleY = 0.94f + 0.06f * progress },
-                        0f, 0f, 0f,
+                        0f, 0f, 0f, null,
                     )
                 }
                 val like = (offset.value.x / threshold.coerceAtLeast(1f)).coerceIn(0f, 1f)
@@ -130,6 +156,7 @@ fun SwipeScreen(people: List<Person> = SamplePeople, onSwiped: (Person, SwipeDir
                             translationY = offset.value.y
                             rotationZ = (offset.value.x / 40f).coerceIn(-14f, 14f)
                         }
+                        .clickable { detail = true }
                         .pointerInput(index) {
                             detectDragGestures(
                                 onDragEnd = { release() },
@@ -139,7 +166,7 @@ fun SwipeScreen(people: List<Person> = SamplePeople, onSwiped: (Person, SwipeDir
                                 scope.launch { offset.snapTo(offset.value + drag) }
                             }
                         },
-                    like, later, skip,
+                    like, later, skip, { detail = true },
                 )
             }
             Row(
@@ -163,7 +190,7 @@ fun SwipeScreen(people: List<Person> = SamplePeople, onSwiped: (Person, SwipeDir
 }
 
 @Composable
-private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: Float, skip: Float) {
+private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: Float, skip: Float, onInfo: (() -> Unit)?) {
     Box(
         modifier
             .clip(RoundedCornerShape(24.dp))
@@ -196,6 +223,11 @@ private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: F
             }
             Text(person.bio, style = MaterialTheme.typography.bodyLarge, color = Color.White)
         }
+        if (onInfo != null) {
+            IconButton(onClick = onInfo, modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)) {
+                Icon(Icons.Filled.Info, contentDescription = stringResource(R.string.swipe_open_profile), tint = Color.White)
+            }
+        }
         Stamp(stringResource(R.string.swipe_stamp_like), NearlyColors.Rose, like, Modifier.align(Alignment.TopStart).padding(24.dp))
         Stamp(stringResource(R.string.swipe_stamp_later), NearlyColors.Teal, later, Modifier.align(Alignment.TopEnd).padding(24.dp))
         Stamp(stringResource(R.string.swipe_stamp_skip), Color.White, skip, Modifier.align(Alignment.TopCenter).padding(top = 40.dp))
@@ -218,7 +250,7 @@ private fun Stamp(text: String, color: Color, alpha: Float, modifier: Modifier) 
 }
 
 @Composable
-private fun ActionButton(icon: ImageVector, description: String, tint: Color, size: Int, onClick: () -> Unit) {
+fun ActionButton(icon: ImageVector, description: String, tint: Color, size: Int, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = CircleShape,
@@ -234,7 +266,7 @@ private fun ActionButton(icon: ImageVector, description: String, tint: Color, si
 }
 
 @Composable
-private fun EmptyDeck(onAgain: () -> Unit) {
+private fun EmptyDeck(noMatch: Boolean, onAgain: () -> Unit, onFilters: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -242,15 +274,23 @@ private fun EmptyDeck(onAgain: () -> Unit) {
     ) {
         BrandMark(Icons.Filled.Place, size = 80)
         Spacer(Modifier.height(24.dp))
-        Text(stringResource(R.string.swipe_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Text(
+            stringResource(if (noMatch) R.string.swipe_no_match_title else R.string.swipe_empty_title),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+        )
         Spacer(Modifier.height(8.dp))
         Text(
-            stringResource(R.string.swipe_empty_help),
+            stringResource(if (noMatch) R.string.swipe_no_match_help else R.string.swipe_empty_help),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(20.dp))
-        OutlinedButton(onClick = onAgain) { Text(stringResource(R.string.swipe_again)) }
+        if (noMatch) {
+            OutlinedButton(onClick = onFilters) { Text(stringResource(R.string.swipe_change_filters)) }
+        } else {
+            OutlinedButton(onClick = onAgain) { Text(stringResource(R.string.swipe_again)) }
+        }
     }
 }
