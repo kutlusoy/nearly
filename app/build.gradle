@@ -13,9 +13,19 @@ if (!versionMatch.matches()) {
 def computedVersionCode = versionMatch.group(1).toInteger() * 1_000_000 +
         versionMatch.group(2).toInteger() * 1_000 + versionMatch.group(3).toInteger()
 
+// The relay list in the repository root becomes an asset of the app
+def relayAssets = layout.buildDirectory.dir('generated/relays')
+tasks.register('syncRelays', Copy) {
+    from(rootProject.file('relays.txt'))
+    into relayAssets
+}
+tasks.named('preBuild') { dependsOn 'syncRelays' }
+
 android {
     namespace = 'com.kutlusoy.nearly'
     compileSdk rootProject.ext.compileSdkVersion
+
+    sourceSets.main.assets.srcDir(relayAssets)
 
     defaultConfig {
         applicationId "com.kutlusoy.nearly"
