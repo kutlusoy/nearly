@@ -95,6 +95,13 @@ android {
         compose = true
     }
 
+    // Robolectric needs the Android resources of the app for the photo tests
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
     packaging {
         // Tor and i2pd are executables that must be extracted to the native library directory to be started
         jniLibs.useLegacyPackaging = true
@@ -119,4 +126,6 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit:2.1.21'
     testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation 'org.robolectric:robolectric:4.16'
+    testImplementation 'androidx.test:core:1.6.1'
 }

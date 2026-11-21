@@ -1,5 +1,7 @@
 package com.kutlusoy.nearly.nostr
 
+import com.kutlusoy.nearly.media.BlurHash
+
 data class PhotoRef(
     val url: String,
     val mime: String,
@@ -7,6 +9,7 @@ data class PhotoRef(
     val width: Int? = null,
     val height: Int? = null,
     val alt: String? = null,
+    val blurhash: String? = null,
 )
 
 sealed interface Post {
@@ -58,6 +61,7 @@ object PostCodec {
                 add("imeta"); add("url ${p.url}"); add("m ${p.mime}"); add("x ${p.sha256}")
                 if (p.width != null && p.height != null) add("dim ${p.width}x${p.height}")
                 p.alt?.takeIf { it.isNotBlank() }?.let { add("alt $it") }
+                p.blurhash?.takeIf { BlurHash.isValid(it) }?.let { add("blurhash $it") }
             }
         }
         return Event.sign(session, KIND_PHOTO, caption, tags, createdAt)
@@ -85,7 +89,7 @@ object PostCodec {
         val mime = fields["m"]?.takeIf { it.startsWith("image/") } ?: return null
         val hash = fields["x"]?.lowercase()?.takeIf { HEX64.matches(it) } ?: return null
         val dim = fields["dim"]?.split("x")?.takeIf { it.size == 2 }?.let { (w, h) -> w.toIntOrNull()?.let { a -> h.toIntOrNull()?.let { b -> a to b } } }
-        return PhotoRef(url, mime, hash, dim?.first, dim?.second, fields["alt"]?.take(300))
+        return PhotoRef(url, mime, hash, dim?.first, dim?.second, fields["alt"]?.take(300), fields["blurhash"]?.takeIf { BlurHash.isValid(it) })
     }
 
     private fun now() = System.currentTimeMillis() / 1000
