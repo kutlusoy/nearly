@@ -1,6 +1,6 @@
 # Nearly: Decision Record
 
-- **Version:** 0.7 (draft)
+- **Version:** 0.8 (draft)
 - **Date:** November 22, 2026
 - **Audience:** All contributors
 - **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md), [`guideline-local-ai.md`](./guideline-local-ai.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
@@ -13,7 +13,7 @@ This record holds the decisions of the product owner. Where it differs from an o
 
 | # | Topic | Decision |
 |---|---|---|
-| 1 | Private photos | Sent end to end encrypted and stored for a limited time on a relay or blob server. The sender chooses how long, the default is 7 days. If a photo is not delivered before it expires, the sender is notified. Peer to peer transfer over onion services is dropped. |
+| 1 | Private photos | Sent end to end encrypted and stored for a limited time on a relay or blob server. The sender chooses how long, the default is 7 days. If a photo is not delivered before it expires, the sender is notified. Peer to peer transfer over onion services is dropped. For high resolution photos this is replaced by decision 33. |
 | 2 | Video | Removed from the product completely. Photos and text only. |
 | 3 | Order of work | Encrypted chat first, then profile, posts and follows. |
 | 4 | Relays | Public relays at the start. A text file in the repository lists them (`relays.txt`), later with relays of the project. |
@@ -44,6 +44,8 @@ This record holds the decisions of the product owner. Where it differs from an o
 | 29 | Discovery card | People are found through an addressable card (kind 30078, `d` = `nearly.card`) with a place of about 5 km (geohash, 5 characters), expiring after 30 days. Presence on the map stays at about 1 km and short lived. Supersedes the 1 km default of decision 5 for the swipe card only. |
 | 30 | Visibility | Version 1 has on and off for the card. `Followers only` (decision 6) needs a card encrypted per follower and moves to a later version. |
 | 31 | Background delivery | Proposal: version 0.1 works while the app is open, 0.2 adds an opt in foreground service, UnifiedPush later. No push server of the project. To be confirmed by the product owner. |
+| 32 | Public photos | Public photos are small on purpose: normal resolution (1080 pixels on the long side) and at most 150 KB, stored on public Blossom servers (a starting list in the code, to be checked). A public server never gets a larger file (the upload refuses more than 400 KB). An own Blossom server may follow later (decision 8). |
+| 33 | High resolution photos | They are never stored on a public server. They go only to the other person, in the chat. The way of transport is open (see the photo guideline). This replaces the server based part of decision 1 for high resolution photos. |
 
 ## 2. Consequences
 
@@ -62,3 +64,4 @@ This record holds the decisions of the product owner. Where it differs from an o
 3. Which public relays are reachable through Tor and accept the event kinds we use?
 4. Is 64 MiB for the key derivation acceptable on the weakest supported phones?
 5. Is the first language set right, and which languages come next?
+6. How do high resolution photos reach the other person: chunks inside the chat, or a live connection between the phones?

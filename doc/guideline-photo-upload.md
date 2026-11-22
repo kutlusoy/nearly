@@ -1,10 +1,10 @@
 # Nearly: Photo Upload Guideline
 
-- **Version:** 0.4 (draft)
+- **Version:** 0.5 (draft)
 - **Date:** November 22, 2026
 - **Audience:** Android developers of Nearly
 - **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/media/` (`PhotoProcessor.kt`, `PhotoGeometry.kt`, `BlurHash.kt`, `PhotoPublisher.kt`, `PhotoBackend.kt`) and `app/src/main/java/com/kutlusoy/nearly/nostr/` (`ImageSanitizer.kt`, `Blossom.kt`), tests in the matching `src/test` folders
-- **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-decisions.md`](./guideline-decisions.md) rows 1, 7 and 8, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), Blossom [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md), [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) and [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md)
+- **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-decisions.md`](./guideline-decisions.md) rows 1, 7, 8, 32 and 33, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), Blossom [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md), [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) and [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
 
@@ -12,12 +12,12 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 ## 1. Scope
 
-This guideline covers **public photos**: profile pictures and photo posts. The photo is prepared on the device, uploaded to a Blossom media server over Tor, and the post carries only the address, the type, the SHA-256 and a small placeholder. Private photos (end to end encrypted, with a retention time) are a separate step.
+This guideline covers **public photos**: profile pictures and photo posts. The photo is prepared on the device, uploaded to a Blossom media server over Tor, and the post carries only the address, the type, the SHA-256 and a small placeholder. Public photos are small on purpose (normal resolution, at most 150 KB). High resolution photos are not public photos, they never go to a public server, see section 7.
 
 ## 2. Flow
 
 1. The user picks a photo (the system photo picker needs no storage permission). The caller passes a function that opens it.
-2. `PhotoProcessor` decodes it at a reduced size, reads the EXIF orientation, turns the pixels upright, scales it to at most 1600 pixels on the long side, and encodes a JPEG. It also makes a thumbnail (320 pixels) and a BlurHash. The new file has no metadata.
+2. `PhotoProcessor` decodes it at a reduced size, reads the EXIF orientation, turns the pixels upright, scales it to at most 1080 pixels on the long side, and encodes a JPEG of at most 150 KB (it lowers the quality, then the size, until it fits). It also makes a thumbnail (320 pixels) and a BlurHash. The new file has no metadata.
 3. `PhotoPublisher.publish` hands the JPEG to `PhotoUploadService`, which checks it again (real type, size, orientation), removes any metadata that is left (`ImageSanitizer`), and uploads it with `BlossomClient`.
 4. The result is a `PhotoRef` (URL, type, hash, width, height, alt text, BlurHash) for `PostService.postPhotos` or the profile.
 
@@ -42,7 +42,7 @@ Rules:
 
 - **Metadata (MUST):** EXIF (including GPS), XMP, comments and other application segments are removed from JPEG, text and EXIF chunks from PNG. The color profile (ICC) and the basic JFIF header stay. A photo that could not be cleaned is not uploaded.
 - **Orientation:** `PhotoUploadService` refuses a photo with an orientation other than normal. The Android layer turns the pixels before.
-- **Size (MUST):** at most 10 MB per photo. A scaled phone photo is far below that.
+- **Size (MUST):** a public photo has normal resolution (1080 pixels) and at most 150 KB. `PhotoUploadService` refuses everything above 400 KB, so a high resolution photo cannot reach a public server by mistake. The client limit of 10 MB only guards the transport.
 - **Authorization (BUD-11):** the upload carries a signed event of kind 24242 in the `Authorization` header, as base64url without padding. The token has the tag `t=upload`, an `expiration` five minutes ahead, the hash of the file as `x` tag, and a `server` tag with the host name, so a stolen token cannot be used on another server. The header `X-SHA-256` carries the same hash.
 - **Trust no server (MUST):** the answer must name the same hash and size as the file that was sent, and the address in it must be `https` (or a darknet address). Otherwise the server is skipped and the next one is tried.
 - **Download (MUST):** a loaded photo is compared with its hash and size limit, a changed file is refused.
@@ -58,6 +58,8 @@ Rules:
 | `PhotoGeometryTest` | scaling, sample size, and the corners of all eight EXIF orientations against the EXIF table |
 | `BlurHashTest` | length and validity, the average and main color of solid colors, left and right halves keep their sides, invalid hashes, a photo post carries only a valid BlurHash |
 | `PhotoProcessorTest` | with Robolectric and real bitmaps: a JPEG with EXIF orientation, GPS and a camera maker comes out clean, orientations 2, 3, 6 and 8 give an upright photo (checked by the colors of the halves), a large photo is scaled with a thumbnail and a BlurHash, a transparent PNG gets a white background, a file that is no photo is refused |
+| `PhotoBudgetTest` | a large noisy photo ends at 1080 pixels and under 150 KB, a smaller budget shrinks it further and keeps the proportions, a photo that cannot be made small enough is refused |
+| `PublicPhotoLimitTest` | a file over 400 KB is refused before any request reaches the server |
 | `BlossomDeleteTest` | the delete request with its scoped token, the mapping of every status, route and TLS refusals, the hash check of the input, and the service deleting an uploaded photo |
 | `PhotoUploadTest` | metadata removal from synthetic JPEG and PNG, the upload request with its signed scoped token, fallback to the next server, answer checks, route and size rules, download with hash check, the service from file to a post reference |
 
@@ -73,16 +75,24 @@ Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an
 - **Servers.** `BlossomServers.DEFAULT` holds three public servers as a starting point. They are not checked yet (see the open questions). The photo calls use the same routing rules as the relays through `NetworkLink.router`, so over Tor nothing goes out directly.
 - **Cards.** The discovery card carries the photos as `imeta` tags (up to six, `https` only), the saved profile keeps them as a checked list.
 
-## 7. Not yet covered
+## 7. High resolution photos (open)
+
+Decision 33: a high resolution photo is never stored on a public Blossom server. It goes only to the other person, in the chat. The way is not decided yet:
+
+1. **Inside the encrypted chat over the relays**, cut into chunks that fit the relay limits (about 40 KB each), wrapped like a message (NIP-17), reassembled and checked by hash on the other phone. Needs no server and works when the other person is offline, but costs many events and time over Tor, and relays may drop chunks.
+2. **A live connection between the two phones** while both are online (a direct stream or an onion service of the app). No relay stores anything, but both must be online at the same time. Decision 1 dropped this once because of the effort.
+
+Whichever is chosen: the photo is encrypted for the other person, has no metadata, can be viewed once, and the sender sees when it arrived.
+
+## 8. Not yet covered
 
 - **Camera** capture in the interface and cropping before the upload.
 - **Upload over Tor in practice:** progress, resume and failure handling for slow connections.
 - **Server list and fallback by quality**, mirror to several servers.
-- **Private photos** with end to end encryption and a retention time. Blossom has no standard expiration, a server with expiring uploads is still to be found (open question 1 of the decision record).
 - **Check which servers offer BUD-12** (`OPTIONS /<sha256>` with `DELETE` in `Allow`) and show a hint when the chosen server does not.
 - **Progress by percent and resume** of a slow upload, the number of uploads that waits when the app closes.
 
-## 8. Checklist
+## 9. Checklist
 
 - [x] Image check and metadata removal for JPEG and PNG
 - [x] Blossom upload with a scoped signed token and answer checks
@@ -91,14 +101,16 @@ Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an
 - [x] Delete on the server (BUD-12), with a scoped token and mapped answers
 - [x] Decode, rotate, scale, JPEG, thumbnail, BlurHash on the device (tested with Robolectric)
 - [x] Photo picker, upload, remove, make first, display with placeholder and cache (tested with a fake backend and a fake server)
+- [x] Public photos small by rule (1080 pixels, 150 KB, refused above 400 KB)
+- [ ] High resolution photos in the chat only (transport to be decided)
 - [ ] Camera in the interface
 - [ ] Test with real camera photos and on a weak phone
 - [ ] Test against a real Blossom server over Tor
 - [ ] Choose the first two or three servers
-- [ ] Private photos
 
-## 9. Open Questions
+## 10. Open Questions
 
 1. Which Blossom servers are used at the start, and do they accept uploads over Tor without payment?
 2. The three starting servers of `BlossomServers.DEFAULT` are unchecked: which accept uploads without payment, work through Tor and offer BUD-12?
-3. Is 1600 pixels and JPEG quality 85 the right default, or should the app scale smaller to save Tor bandwidth?
+3. Is 1080 pixels at 150 KB the right size, or should it be even smaller to save Tor bandwidth?
+4. How do high resolution photos reach the other person: chunks inside the chat, or a live connection (section 7)?
