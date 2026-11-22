@@ -78,6 +78,12 @@ fun SwipeScreen(
     filter: DiscoveryFilter = DiscoveryFilter(),
     onFilters: () -> Unit = {},
     onSwiped: (Person, SwipeDirection) -> Unit = { _, _ -> },
+    preview: Boolean = true,
+    needsLocation: Boolean = false,
+    onAllowLocation: () -> Unit = {},
+    followed: Set<String> = emptySet(),
+    onFollowPerson: ((String) -> Unit)? = null,
+    onMessagePerson: ((String) -> Unit)? = null,
 ) {
     val deck = remember(people, filter) { filter.deck(people) }
     var index by rememberSaveable(deck.map { it.id }) { mutableIntStateOf(0) }
@@ -118,6 +124,9 @@ fun SwipeScreen(
     if (detail && current != null) {
         PersonDetail(
             person = current,
+            followed = current.key in followed,
+            onFollow = current.key?.let { key -> onFollowPerson?.let { f -> { f(key) } } },
+            onMessage = current.key?.let { key -> onMessagePerson?.let { f -> { f(key) } } },
             onClose = { detail = false },
             onAction = { direction ->
                 detail = false
@@ -128,13 +137,15 @@ fun SwipeScreen(
     }
     Column(Modifier.fillMaxSize()) {
         NearlyTopBar {
-            AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) })
+            if (preview) AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) })
             IconButton(onClick = onFilters) {
                 Icon(ImageVector.vectorResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.swipe_filters))
             }
         }
-        if (current == null) {
-            EmptyDeck(noMatch = deck.isEmpty(), onAgain = { index = 0 }, onFilters = onFilters)
+        if (current == null && needsLocation) {
+            LocationPrompt(onAllowLocation)
+        } else if (current == null) {
+            EmptyDeck(noMatch = deck.isEmpty() && people.isNotEmpty(), onAgain = { index = 0 }, onFilters = onFilters, real = !preview)
         } else {
             Box(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp).onSizeChanged { area = it },
@@ -290,7 +301,7 @@ fun ActionButton(icon: ImageVector, description: String, tint: Color, size: Int,
 }
 
 @Composable
-private fun EmptyDeck(noMatch: Boolean, onAgain: () -> Unit, onFilters: () -> Unit) {
+private fun EmptyDeck(noMatch: Boolean, onAgain: () -> Unit, onFilters: () -> Unit, real: Boolean = false) {
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -313,8 +324,36 @@ private fun EmptyDeck(noMatch: Boolean, onAgain: () -> Unit, onFilters: () -> Un
         Spacer(Modifier.height(20.dp))
         if (noMatch) {
             OutlinedButton(onClick = onFilters) { Text(stringResource(R.string.swipe_change_filters)) }
-        } else {
+        } else if (!real) {
             OutlinedButton(onClick = onAgain) { Text(stringResource(R.string.swipe_again)) }
+        }
+    }
+}
+
+// Swipe and feed need the approximate place of the phone to find people near it
+@Composable
+fun LocationPrompt(onAllowed: () -> Unit) {
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onAllowed()
+    }
+    Column(
+        Modifier.fillMaxSize().padding(32.dp).testTag("location-prompt"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        BrandMark(Icons.Filled.Place, size = 80)
+        Spacer(Modifier.height(24.dp))
+        Text(stringResource(R.string.location_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.location_help),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(20.dp))
+        androidx.compose.material3.Button(onClick = { launcher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }, modifier = Modifier.testTag("allow-location")) {
+            Text(stringResource(R.string.location_allow))
         }
     }
 }
