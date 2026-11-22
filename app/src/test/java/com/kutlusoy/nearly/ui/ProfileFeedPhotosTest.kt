@@ -39,7 +39,7 @@ class ProfileFeedPhotosTest {
 
     @Test
     fun tappingTheEdgesOfACardFlipsThroughThePhotos() {
-        rule.setContent { NearlyTheme { SwipeScreen() } }
+        rule.setContent { NearlyTheme { SwipeScreen(people = SamplePeople) } }
         rule.onNodeWithContentDescription("Photo 1 of 4").assertExists()
         rule.onNodeWithTag("card").performTouchInput { click(Offset(width * 0.9f, height * 0.4f)) }
         rule.onNodeWithContentDescription("Photo 2 of 4").assertExists()
@@ -54,14 +54,14 @@ class ProfileFeedPhotosTest {
 
     @Test
     fun theFirstPhotoStaysTheFirstWhenGoingBackFurther() {
-        rule.setContent { NearlyTheme { SwipeScreen() } }
+        rule.setContent { NearlyTheme { SwipeScreen(people = SamplePeople) } }
         rule.onNodeWithTag("card").performTouchInput { click(Offset(width * 0.1f, height * 0.4f)) }
         rule.onNodeWithContentDescription("Photo 1 of 4").assertExists()
     }
 
     @Test
     fun theNextCardStartsAtItsFirstPhoto() {
-        rule.setContent { NearlyTheme { SwipeScreen() } }
+        rule.setContent { NearlyTheme { SwipeScreen(people = SamplePeople) } }
         rule.onNodeWithTag("card").performTouchInput { click(Offset(width * 0.9f, height * 0.4f)) }
         rule.onNodeWithContentDescription("Skip").performClick()
         rule.waitUntil(5_000) { runCatching { rule.onNodeWithText("Jonas").assertExists() }.isSuccess }
@@ -112,7 +112,7 @@ class ProfileFeedPhotosTest {
     fun theProfileTabShowsWhatWasFilledInAndLeadsToTheEditor() {
         var edited = 0
         val filled = MyProfile(about = "Climber and tea lover", lookingFor = LookingFor.Serious, interests = listOf("Tea", "Climbing"), job = "Nurse", city = "Leipzig")
-        rule.setContent { NearlyTheme { MainScreen(account, Tab.Profile, {}, {}, profile = filled, following = setOf("mia", "jonas"), onEditProfile = { edited++ }) } }
+        rule.setContent { NearlyTheme { MainScreen(account, Tab.Profile, {}, {}, profile = filled, chat = com.kutlusoy.nearly.chat.ChatUiState(following = listOf(com.kutlusoy.nearly.chat.ContactUi("a".repeat(64), "A", "", null, "npub", true), com.kutlusoy.nearly.chat.ContactUi("b".repeat(64), "B", "", null, "npub", true))), onEditProfile = { edited++ }) } }
         rule.onNodeWithText("Climber and tea lover").assertExists()
         rule.onNodeWithText("Nurse, Leipzig").assertExists()
         rule.onNodeWithText("Tea").assertExists()
@@ -126,7 +126,7 @@ class ProfileFeedPhotosTest {
     fun peopleNearbyCanBeFollowedFromTheSuggestionsAndFromAPost() {
         var following by mutableStateOf(setOf<String>())
         rule.setContent {
-            NearlyTheme { FeedScreen(following = following, onFollow = { id -> following = if (id in following) following - id else following + id }) }
+            NearlyTheme { FeedScreen(people = SamplePeople, posts = SamplePosts, following = following, onFollow = { id -> following = if (id in following) following - id else following + id }) }
         }
         rule.onNodeWithText("People near you").assertExists()
         rule.onNodeWithTag("nearby-mia").assertExists()
@@ -141,7 +141,7 @@ class ProfileFeedPhotosTest {
     }
 
     @Test
-    fun whatWasFilledInAndWhoIsFollowedIsKept() {
+    fun whatWasFilledInIsKept() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         app.getSharedPreferences("nearly", Application.MODE_PRIVATE).edit().clear().commit()
         val vm = AppViewModel(app)
@@ -151,11 +151,7 @@ class ProfileFeedPhotosTest {
             drinking = Frequency.Never, smoking = Frequency.Sometimes, exercise = Frequency.Often,
         )
         vm.updateProfile(profile)
-        vm.toggleFollow("mia")
-        vm.toggleFollow("paul")
-        vm.toggleFollow("mia")
         val again = AppViewModel(app).state.value
         assertEquals(profile, again.profile)
-        assertEquals(setOf("paul"), again.following)
     }
 }
