@@ -20,20 +20,29 @@ class BlossomException(message: String) : IOException(message)
 
 data class BlobDescriptor(val url: String, val sha256: String, val size: Long, val type: String)
 
+// What the server said to a delete request (BUD-12). Gone means the blob was not there any more, which is what the user wanted.
+enum class DeleteResult { Deleted, Gone, Refused, Unreachable }
+
 // Authorization token of BUD-11: a signed event of kind 24242, sent base64url without padding
 object BlossomAuth {
     const val KIND = 24242
     private const val VALID_SECONDS = 300L
 
-    fun uploadHeader(session: Session, sha256: String, serverHost: String, now: Long = System.currentTimeMillis() / 1000): String {
+    fun uploadHeader(session: Session, sha256: String, serverHost: String, now: Long = System.currentTimeMillis() / 1000): String =
+        header(session, "upload", "Upload photo", sha256, serverHost, now)
+
+    fun deleteHeader(session: Session, sha256: String, serverHost: String, now: Long = System.currentTimeMillis() / 1000): String =
+        header(session, "delete", "Delete photo", sha256, serverHost, now)
+
+    private fun header(session: Session, action: String, content: String, sha256: String, serverHost: String, now: Long): String {
         val tags = listOf(
-            listOf("t", "upload"),
+            listOf("t", action),
             listOf("expiration", (now + VALID_SECONDS).toString()),
             listOf("x", sha256),
-            // Limits the token to this server, a stolen token cannot be replayed elsewhere
+            // Limits the token to this server, a stolen token cannot be replayed elsewhere. A delete token is the more dangerous one.
             listOf("server", serverHost.lowercase()),
         )
-        val event = Event.sign(session, KIND, "Upload photo", tags, now)
+        val event = Event.sign(session, KIND, content, tags, now)
         return "Nostr " + Base64.getUrlEncoder().withoutPadding().encodeToString(event.toJson().toByteArray(Charsets.UTF_8))
     }
 }
@@ -61,6 +70,43 @@ class BlossomClient(
             }
         }
         throw BlossomException("no server accepted the upload (${failures.joinToString("; ")})")
+    }
+
+    // Asks the server that holds the blob to delete it (BUD-12): DELETE /<sha256> with a token for this server only.
+    // The owner of the key is the only one who can do it, a server may refuse anyway. Never throws for network or server trouble.
+    fun delete(session: Session, blobUrl: String, sha256: String, now: Long = System.currentTimeMillis() / 1000): DeleteResult {
+        val hash = sha256.lowercase()
+        require(HASH.matches(hash)) { "not a SHA-256" }
+        return try {
+            val origin = originOf(blobUrl)
+            val (client, base) = prepare(origin)
+            val request = Request.Builder()
+                .url("$base/$hash")
+                .header("Authorization", BlossomAuth.deleteHeader(session, hash, URI(base).host, now))
+                .delete()
+                .build()
+            client.newCall(request).execute().use { response ->
+                when (response.code) {
+                    200, 204 -> DeleteResult.Deleted
+                    404 -> DeleteResult.Gone
+                    401, 402, 403, 429 -> DeleteResult.Refused
+                    else -> DeleteResult.Unreachable
+                }
+            }
+        } catch (e: IOException) {
+            DeleteResult.Unreachable
+        }
+    }
+
+    // The server of a blob address: scheme, host and port, without the path
+    private fun originOf(url: String): String {
+        val uri = try {
+            URI(url)
+        } catch (e: Exception) {
+            throw BlossomException("invalid address")
+        }
+        val host = uri.host ?: throw BlossomException("invalid address")
+        return uri.scheme + "://" + host + if (uri.port >= 0) ":${uri.port}" else ""
     }
 
     // Loads a blob and checks that it is the one that was asked for
@@ -139,6 +185,7 @@ class BlossomClient(
     companion object {
         const val MAX_UPLOAD = 10 * 1024 * 1024
         private const val MAX_DESCRIPTOR = 16 * 1024
+        private val HASH = Regex("[0-9a-f]{64}")
 
         fun sha256Hex(bytes: ByteArray): String = NostrKeys.toHex(MessageDigest.getInstance("SHA-256").digest(bytes))
 
@@ -165,4 +212,7 @@ class PhotoUploadService(private val blossom: BlossomClient, private val session
         val blob = blossom.upload(session, clean, info.mime)
         return PhotoRef(blob.url, info.mime, blob.sha256, info.width, info.height, alt)
     }
+
+    // Removes the file of a photo from its server
+    fun delete(photo: PhotoRef): DeleteResult = blossom.delete(session, photo.url, photo.sha256)
 }
