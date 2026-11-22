@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,11 +73,10 @@ enum class SwipeDirection { Like, Later, Skip }
 // A tap on the left or the right half of the card flips through the photos.
 @Composable
 fun SwipeScreen(
-    people: List<Person> = SamplePeople,
+    people: List<Person>,
     filter: DiscoveryFilter = DiscoveryFilter(),
     onFilters: () -> Unit = {},
     onSwiped: (Person, SwipeDirection) -> Unit = { _, _ -> },
-    preview: Boolean = true,
     needsLocation: Boolean = false,
     onAllowLocation: () -> Unit = {},
     followed: Set<String> = emptySet(),
@@ -137,7 +135,6 @@ fun SwipeScreen(
     }
     Column(Modifier.fillMaxSize()) {
         NearlyTopBar {
-            if (preview) AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) })
             IconButton(onClick = onFilters) {
                 Icon(ImageVector.vectorResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.swipe_filters))
             }
@@ -145,7 +142,7 @@ fun SwipeScreen(
         if (current == null && needsLocation) {
             LocationPrompt(onAllowLocation)
         } else if (current == null) {
-            EmptyDeck(noMatch = deck.isEmpty() && people.isNotEmpty(), onAgain = { index = 0 }, onFilters = onFilters, real = !preview)
+            EmptyDeck(noMatch = deck.isEmpty() && people.isNotEmpty(), onFilters = onFilters)
         } else {
             Box(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp).onSizeChanged { area = it },
@@ -301,7 +298,7 @@ fun ActionButton(icon: ImageVector, description: String, tint: Color, size: Int,
 }
 
 @Composable
-private fun EmptyDeck(noMatch: Boolean, onAgain: () -> Unit, onFilters: () -> Unit, real: Boolean = false) {
+private fun EmptyDeck(noMatch: Boolean, onFilters: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -321,11 +318,9 @@ private fun EmptyDeck(noMatch: Boolean, onAgain: () -> Unit, onFilters: () -> Un
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(20.dp))
         if (noMatch) {
+            Spacer(Modifier.height(20.dp))
             OutlinedButton(onClick = onFilters) { Text(stringResource(R.string.swipe_change_filters)) }
-        } else if (!real) {
-            OutlinedButton(onClick = onAgain) { Text(stringResource(R.string.swipe_again)) }
         }
     }
 }

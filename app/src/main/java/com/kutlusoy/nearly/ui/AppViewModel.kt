@@ -51,7 +51,7 @@ class AppViewModel @JvmOverloads constructor(
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
     private var session: Session? = null
 
-    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), following = savedFollowing(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     init {
@@ -269,14 +269,6 @@ class AppViewModel @JvmOverloads constructor(
         publishCard()
     }
 
-    fun toggleFollow(id: String) {
-        val next = _state.value.following.let { if (id in it) it - id else it + id }
-        prefs.edit().putString(KEY_FOLLOWING, next.joinToString(",")).apply()
-        _state.update { it.copy(following = next) }
-    }
-
-    private fun savedFollowing(): Set<String> = (prefs.getString(KEY_FOLLOWING, "") ?: "").split(',').filter { it.isNotBlank() }.toSet()
-
     fun openDiscovery(open: Boolean) = _state.update { it.copy(discoveryOpen = open) }
 
     fun updateDiscovery(filter: DiscoveryFilter) {
@@ -314,7 +306,6 @@ class AppViewModel @JvmOverloads constructor(
         const val KEY_EMAIL = "email"
         const val KEY_AGE = "age"
         const val KEY_THEME = "theme"
-        const val KEY_FOLLOWING = "following"
         const val KEY_NETWORK = "network.mode"
         const val KEY_POLICY = "message.policy"
     }
