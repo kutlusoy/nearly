@@ -1,9 +1,9 @@
 # Nearly: Photo Upload Guideline
 
-- **Version:** 0.3 (draft)
+- **Version:** 0.4 (draft)
 - **Date:** November 22, 2026
 - **Audience:** Android developers of Nearly
-- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/media/` (`PhotoProcessor.kt`, `PhotoGeometry.kt`, `BlurHash.kt`, `PhotoPublisher.kt`) and `app/src/main/java/com/kutlusoy/nearly/nostr/` (`ImageSanitizer.kt`, `Blossom.kt`), tests in the matching `src/test` folders
+- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/media/` (`PhotoProcessor.kt`, `PhotoGeometry.kt`, `BlurHash.kt`, `PhotoPublisher.kt`, `PhotoBackend.kt`) and `app/src/main/java/com/kutlusoy/nearly/nostr/` (`ImageSanitizer.kt`, `Blossom.kt`), tests in the matching `src/test` folders
 - **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-decisions.md`](./guideline-decisions.md) rows 1, 7 and 8, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), Blossom [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md), [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) and [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
@@ -65,16 +65,24 @@ The photo tests run on the JVM with Robolectric (native graphics), they do not n
 
 Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an upload over Tor, and the speed of the processing on a weak phone.
 
-## 6. Not yet covered
+## 6. In the app
 
-- **Picking and capturing:** the system photo picker and the camera in the interface.
+- **Picker and upload.** The profile editor offers up to six photos in a grid with the system photo picker (images only, no storage permission). `AppViewModel.addPhoto` runs `PhotoBackend.upload` off the main thread (prepare with `PhotoProcessor`, upload with `PhotoUploadService`). While it runs the add cell shows a progress ring, a failure shows a note and changes nothing.
+- **Remove.** `removePhoto` takes the photo out of the profile and the discovery card at once, republishes the card, and then asks the server to delete the file (BUD-12). The note says `removed, also from the server` or, after `Refused` or `Unreachable`, that the server may still hold the file. `Make first` moves a photo to the front, the first photo is the profile picture (`picture` of kind 0, `https` only).
+- **Display.** `RemotePhoto` shows the BlurHash first and the photo when it is loaded. `AppViewModel.loadPhoto` keeps 48 pictures in memory, `PhotoCache` keeps the files on the disk by hash (100 MB, least recently used first, a file name can only be a SHA-256) and at most three downloads run at once. Every download is checked against its hash.
+- **Servers.** `BlossomServers.DEFAULT` holds three public servers as a starting point. They are not checked yet (see the open questions). The photo calls use the same routing rules as the relays through `NetworkLink.router`, so over Tor nothing goes out directly.
+- **Cards.** The discovery card carries the photos as `imeta` tags (up to six, `https` only), the saved profile keeps them as a checked list.
+
+## 7. Not yet covered
+
+- **Camera** capture in the interface and cropping before the upload.
 - **Upload over Tor in practice:** progress, resume and failure handling for slow connections.
 - **Server list and fallback by quality**, mirror to several servers.
 - **Private photos** with end to end encryption and a retention time. Blossom has no standard expiration, a server with expiring uploads is still to be found (open question 1 of the decision record).
 - **Check which servers offer BUD-12** (`OPTIONS /<sha256>` with `DELETE` in `Allow`) and show a hint when the chosen server does not.
-- **Display:** loading, a cache that is cleaned, the BlurHash as placeholder while loading.
+- **Progress by percent and resume** of a slow upload, the number of uploads that waits when the app closes.
 
-## 7. Checklist
+## 8. Checklist
 
 - [x] Image check and metadata removal for JPEG and PNG
 - [x] Blossom upload with a scoped signed token and answer checks
@@ -82,13 +90,15 @@ Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an
 - [x] Upload service from file to a post reference
 - [x] Delete on the server (BUD-12), with a scoped token and mapped answers
 - [x] Decode, rotate, scale, JPEG, thumbnail, BlurHash on the device (tested with Robolectric)
-- [ ] Photo picker and camera in the interface
+- [x] Photo picker, upload, remove, make first, display with placeholder and cache (tested with a fake backend and a fake server)
+- [ ] Camera in the interface
 - [ ] Test with real camera photos and on a weak phone
 - [ ] Test against a real Blossom server over Tor
 - [ ] Choose the first two or three servers
 - [ ] Private photos
 
-## 8. Open Questions
+## 9. Open Questions
 
 1. Which Blossom servers are used at the start, and do they accept uploads over Tor without payment?
-2. Is 1600 pixels and JPEG quality 85 the right default, or should the app scale smaller to save Tor bandwidth?
+2. The three starting servers of `BlossomServers.DEFAULT` are unchecked: which accept uploads without payment, work through Tor and offer BUD-12?
+3. Is 1600 pixels and JPEG quality 85 the right default, or should the app scale smaller to save Tor bandwidth?
