@@ -206,6 +206,8 @@ class BlossomClient(
 // From a photo file to a reference that a post can carry
 class PhotoUploadService(private val blossom: BlossomClient, private val session: Session) {
     fun upload(bytes: ByteArray, alt: String? = null): PhotoRef {
+        // High resolution photos never go to a public server, they are for the chat only
+        if (bytes.size > MAX_PUBLIC_BYTES) throw BlossomException("too large for a public photo, high resolution photos are for the chat")
         val info = ImageSanitizer.inspect(bytes) ?: throw BlossomException("unsupported image, use JPEG or PNG")
         if (info.needsRotation) throw BlossomException("the photo must be rotated before the upload, its orientation lives in metadata that is removed")
         val clean = ImageSanitizer.strip(bytes)
@@ -215,4 +217,9 @@ class PhotoUploadService(private val blossom: BlossomClient, private val session
 
     // Removes the file of a photo from its server
     fun delete(photo: PhotoRef): DeleteResult = blossom.delete(session, photo.url, photo.sha256)
+
+    companion object {
+        // A public photo of normal resolution is far below this, the photo processor keeps it under 150 KB
+        const val MAX_PUBLIC_BYTES = 400_000
+    }
 }
