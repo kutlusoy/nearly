@@ -31,6 +31,12 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 - The own ID is shown in the chat list with Copy and Share.
 - The name of the other person comes from its public profile (kind 0). The app publishes the own profile with the user name at every sign in. Until a name is known, the short npub is shown.
 
+### Who can write
+
+- Setting `Who can write to me`: Everyone (default) or Only people I follow.
+- With the second choice, messages of people the user does not follow are kept but hidden. The chat list shows a row with the number of hidden chats, the screen behind it offers `Follow and show` and `Delete`.
+- A person who answers a message of the user is always shown. Hidden messages do not count as unread.
+
 ## 4. Storage
 
 - One SQLite database per account on the phone (`chat-<first 16 hex of the key>.db`), tables `messages`, `wraps`, `peers`, `meta`. Messages are not encrypted in the database, the app storage is private to the app and excluded from backups.
@@ -62,4 +68,4 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 1. Which relays accept gift wraps from unknown keys without payment or proof of work?
 2. How does a person without a friend find the first chat partner before the swipe and the map show real people?
-3. Do we keep messages from unknown people in a separate request list?
+3. Should the default become Only people I follow once real profiles are found on the map?
