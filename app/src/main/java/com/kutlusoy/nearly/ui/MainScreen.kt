@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -212,7 +213,16 @@ private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount:
         }
         Spacer(Modifier.height(20.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-        Column(
+        if (profile.photos.isNotEmpty()) {
+            Column(Modifier.fillMaxWidth().padding(2.dp).testTag("photo-grid"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                profile.photos.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        row.forEach { photo -> RemotePhoto(photo, Modifier.weight(1f).aspectRatio(1f)) }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        } else Column(
             Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
