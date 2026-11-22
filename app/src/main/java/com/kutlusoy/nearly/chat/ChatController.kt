@@ -16,9 +16,9 @@ import kotlinx.coroutines.launch
 data class ConversationUi(val peer: String, val name: String, val last: ChatMessage, val unread: Int)
 
 // A person the user knows: the profile from the relays and the ID that is shown on the profile page
-data class ContactUi(val peer: String, val name: String, val about: String, val age: Int?, val npub: String, val followed: Boolean)
+data class ContactUi(val peer: String, val name: String, val about: String, val age: Int?, val npub: String, val followed: Boolean, val blocked: Boolean = false)
 
-enum class ChatError { BadId, ToSelf, TooLong }
+enum class ChatError { BadId, ToSelf, TooLong, Blocked }
 
 // Who can write to me: everybody, or only the people I follow and the people I wrote to myself. The rest stays hidden as a request.
 enum class MessagePolicy { Everyone, FollowedOnly }
@@ -30,6 +30,7 @@ data class ChatUiState(
     val openPeer: String? = null,
     val openName: String = "",
     val following: List<ContactUi> = emptyList(),
+    val blocked: List<ContactUi> = emptyList(),
     val profile: ContactUi? = null,
     val messages: List<ChatMessage> = emptyList(),
     val network: NetworkStatus = NetworkStatus(),
@@ -48,7 +49,7 @@ class ChatController(
     private var service: ChatService? = null
     private var store: ChatStore? = null
     private var statusJob: Job? = null
-    private var policy = MessagePolicy.Everyone
+    private var policy = MessagePolicy.FollowedOnly
 
     fun open(session: Session, name: String, about: String, age: Int?, mode: NetworkMode) {
         close()
@@ -95,6 +96,7 @@ class ChatController(
         val error = when {
             peer == null -> ChatError.BadId
             peer == ownPubkey -> ChatError.ToSelf
+            store?.isBlocked(peer) == true -> ChatError.Blocked
             else -> null
         }
         if (error != null || peer == null) {
@@ -139,6 +141,7 @@ class ChatController(
 
     fun setFollowed(peer: String, followed: Boolean) {
         val chatStore = store ?: return
+        if (followed) chatStore.setBlocked(peer, false)
         chatStore.setFollowed(peer, followed)
         if (followed) service?.resolveProfile(peer)
         refresh()
@@ -179,6 +182,21 @@ class ChatController(
         if (_state.value.openPeer == peer) closeConversation() else refresh()
     }
 
+    // Blocking removes the chat and the follow, and the messages of the person are dropped from now on
+    fun block(peer: String) {
+        val chatStore = store ?: return
+        chatStore.setBlocked(peer, true)
+        chatStore.setFollowed(peer, false)
+        chatStore.deleteConversation(peer)
+        _state.update { it.copy(openPeer = null, profile = null, messages = emptyList(), openName = "", error = null) }
+        refresh()
+    }
+
+    fun unblock(peer: String) {
+        store?.setBlocked(peer, false)
+        refresh()
+    }
+
     private fun conversationsWithoutName(): List<String> {
         val chatStore = store ?: return emptyList()
         return chatStore.conversations().map { it.peer }.filter { chatStore.peerName(it) == null }
@@ -193,10 +211,12 @@ class ChatController(
         val requests = hidden.map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
         val messages = if (open != null) chatStore.messages(open) else emptyList()
         val following = chatStore.followed().map { contact(chatStore, it) }
+        val blocked = chatStore.blocked().map { contact(chatStore, it) }
         val profilePeer = _state.value.profile?.peer
         _state.update {
             it.copy(
                 following = following,
+                blocked = blocked,
                 profile = profilePeer?.let { peer -> contact(chatStore, peer) },
                 conversations = conversations,
                 requests = requests,
@@ -213,7 +233,7 @@ class ChatController(
 
     private fun contact(chatStore: ChatStore, peer: String): ContactUi {
         val profile = chatStore.peerProfile(peer)
-        return ContactUi(peer, profile?.name ?: shortNpub(peer), profile?.about.orEmpty(), profile?.age, npubOf(peer), peer in chatStore.followed())
+        return ContactUi(peer, profile?.name ?: shortNpub(peer), profile?.about.orEmpty(), profile?.age, npubOf(peer), peer in chatStore.followed(), chatStore.isBlocked(peer))
     }
 
     private fun displayName(chatStore: ChatStore, peer: String): String = chatStore.peerName(peer) ?: shortNpub(peer)
