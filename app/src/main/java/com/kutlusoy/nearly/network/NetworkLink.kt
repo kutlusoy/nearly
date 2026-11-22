@@ -31,6 +31,9 @@ data class NetworkStatus(
 interface NetworkLink {
     val status: StateFlow<NetworkStatus>
     val transport: NostrTransport
+
+    // The same routing rules for everything else the app loads, photos for example
+    val router: RelayRouter
     fun start(mode: NetworkMode)
     fun stop()
 }
@@ -45,7 +48,9 @@ class RelayHub(
     @Volatile
     private var mode = NetworkMode.Tor
 
-    private val client by lazy { NostrClient(AndroidRelays.load(context), RelayRouter({ NetworkSettings(mode) }, { services.ports })) }
+    override val router by lazy { RelayRouter({ NetworkSettings(mode) }, { services.ports }) }
+
+    private val client by lazy { NostrClient(AndroidRelays.load(context), router) }
 
     override val transport: NostrTransport by lazy { ClientTransport(client) }
 

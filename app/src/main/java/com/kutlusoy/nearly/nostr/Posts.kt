@@ -55,16 +55,19 @@ object PostCodec {
     fun photo(session: Session, caption: String, photos: List<PhotoRef>, createdAt: Long = now()): Event {
         require(photos.size in 1..MAX_PHOTOS) { "a photo post has 1 to $MAX_PHOTOS photos" }
         require(caption.length <= MAX_TEXT) { "caption too long" }
-        val tags = photos.map { p ->
-            require(p.url.startsWith("https://") && p.mime.startsWith("image/") && HEX64.matches(p.sha256)) { "invalid photo reference" }
-            buildList {
-                add("imeta"); add("url ${p.url}"); add("m ${p.mime}"); add("x ${p.sha256}")
-                if (p.width != null && p.height != null) add("dim ${p.width}x${p.height}")
-                p.alt?.takeIf { it.isNotBlank() }?.let { add("alt $it") }
-                p.blurhash?.takeIf { BlurHash.isValid(it) }?.let { add("blurhash $it") }
-            }
-        }
+        val tags = photos.map { imetaTag(it) }
         return Event.sign(session, KIND_PHOTO, caption, tags, createdAt)
+    }
+
+    // The tag that describes one photo, in posts and in discovery cards (NIP-92 imeta)
+    fun imetaTag(p: PhotoRef): List<String> {
+        require(p.url.startsWith("https://") && p.mime.startsWith("image/") && HEX64.matches(p.sha256)) { "invalid photo reference" }
+        return buildList {
+            add("imeta"); add("url ${p.url}"); add("m ${p.mime}"); add("x ${p.sha256}")
+            if (p.width != null && p.height != null) add("dim ${p.width}x${p.height}")
+            p.alt?.takeIf { it.isNotBlank() }?.let { add("alt $it") }
+            p.blurhash?.takeIf { BlurHash.isValid(it) }?.let { add("blurhash $it") }
+        }
     }
 
     fun reaction(session: Session, target: Event, content: String = "+", createdAt: Long = now()): Event =
@@ -77,11 +80,14 @@ object PostCodec {
             event.tags.firstOrNull { it.size >= 2 && it[0] == "e" && it.getOrNull(3) == "reply" }?.get(1)?.takeIf { HEX64.matches(it) },
         )
         KIND_PHOTO -> {
-            val photos = event.tags.filter { it.firstOrNull() == "imeta" }.mapNotNull { parsePhoto(it) }.take(MAX_PHOTOS)
+            val photos = parseImeta(event, MAX_PHOTOS)
             if (photos.isEmpty()) null else Post.Photos(event.id, event.pubkey, event.createdAt, event.content.take(MAX_TEXT), photos)
         }
         else -> null
     }
+
+    // The valid photos of an event, foreign tags are checked one by one
+    fun parseImeta(event: Event, max: Int): List<PhotoRef> = event.tags.filter { it.firstOrNull() == "imeta" }.mapNotNull { parsePhoto(it) }.take(max)
 
     private fun parsePhoto(tag: List<String>): PhotoRef? {
         val fields = tag.drop(1).mapNotNull { entry -> entry.indexOf(' ').takeIf { it > 0 }?.let { entry.substring(0, it) to entry.substring(it + 1) } }.toMap()

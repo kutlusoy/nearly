@@ -21,6 +21,7 @@ data class Person(
     val languages: List<String> = emptyList(),
     val key: String? = null,
     val genderKnown: Boolean = true,
+    val photoRefs: List<com.kutlusoy.nearly.nostr.PhotoRef> = emptyList(),
 )
 
 // The picture of one photo slot, until photos are loaded every slot has its own gradient
