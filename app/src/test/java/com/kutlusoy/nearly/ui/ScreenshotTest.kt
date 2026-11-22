@@ -17,7 +17,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-// Renders the screens with sample data and writes the pictures to build/screenshots
+// Renders the screens with test data and writes the pictures to build/screenshots
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi")
@@ -28,6 +28,7 @@ class ScreenshotTest {
     private val today = BirthDate(2026, 11, 21)
     private val words = "abandon ability able about above"
     private val account = AccountInfo("anna", "npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", 26)
+    private val people = com.kutlusoy.nearly.discovery.NearbyState(cell = "u33db", permission = true, people = SamplePeople)
 
     private fun shot(name: String, dark: Boolean = false, content: @Composable () -> Unit) {
         rule.setContent { NearlyTheme(dark = dark) { content() } }
@@ -88,13 +89,13 @@ class ScreenshotTest {
     fun signInFailed() = shot("07-sign-in-failed") { SignInScreen(SignInForm("anna", "anna@example.org", words), false, AppError.SignInFailed, {}, {}, {}) }
 
     @Test
-    fun swipeTab() = shot("08-main-swipe") { MainScreen(account, Tab.Swipe, {}, {}) }
+    fun swipeTab() = shot("08-main-swipe") { MainScreen(account, Tab.Swipe, {}, {}, nearby = people) }
 
     @Test
-    fun swipeTabDark() = shot("08-main-swipe-dark", dark = true) { MainScreen(account, Tab.Swipe, {}, {}) }
+    fun swipeTabDark() = shot("08-main-swipe-dark", dark = true) { MainScreen(account, Tab.Swipe, {}, {}, nearby = people) }
 
     @Test
-    fun feedTab() = shot("08-main-feed") { MainScreen(account, Tab.Feed, {}, {}) }
+    fun feedTab() = shot("08-main-feed") { MainScreen(account, Tab.Feed, {}, {}, nearby = people) }
 
     @Test
     fun profileTab() = shot("09-main-profile") { MainScreen(account, Tab.Profile, {}, {}) }

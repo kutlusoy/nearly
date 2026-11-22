@@ -33,7 +33,7 @@ class DiscoveryUiTest {
 
     @Test
     fun theProfileCanBeReadBeforeDecidingAndTheButtonsStillDecide() {
-        rule.setContent { NearlyTheme { SwipeScreen(onSwiped = { p, d -> log += p.id to d }) } }
+        rule.setContent { NearlyTheme { SwipeScreen(people = SamplePeople, onSwiped = { p, d -> log += p.id to d }) } }
         rule.onNodeWithContentDescription("View profile").performClick()
         rule.onNodeWithText("About").assertExists()
         rule.onNodeWithText("Looking for").assertExists()
@@ -59,7 +59,7 @@ class DiscoveryUiTest {
     fun whenNoOneFitsTheDeckSaysSoAndLeadsToTheSettings() {
         var opened = 0
         val none = DiscoveryFilter(showMe = setOf(Gender.Man), lookingFor = setOf(LookingFor.Fun))
-        rule.setContent { NearlyTheme { SwipeScreen(filter = none, onFilters = { opened++ }) } }
+        rule.setContent { NearlyTheme { SwipeScreen(people = SamplePeople, filter = none, onFilters = { opened++ }) } }
         rule.onNodeWithText("No one fits your settings").assertExists()
         rule.onNodeWithText("Change settings").performClick()
         rule.onNodeWithContentDescription("Discovery settings").performClick()
@@ -69,7 +69,7 @@ class DiscoveryUiTest {
     @Test
     fun theFilterChangesWhoIsInTheDeck() {
         val women = DiscoveryFilter(showMe = setOf(Gender.Woman))
-        rule.setContent { NearlyTheme { SwipeScreen(filter = women) } }
+        rule.setContent { NearlyTheme { SwipeScreen(people = SamplePeople, filter = women) } }
         rule.onNodeWithText("Mia").assertExists()
         rule.onNodeWithContentDescription("Skip").performClick()
         rule.waitUntil(5_000) { runCatching { rule.onNodeWithText("Lea").assertExists() }.isSuccess }
