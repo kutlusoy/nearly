@@ -5,9 +5,8 @@
     <string name="profile_job_city">%1$s, %2$s</string>
 
     <string name="edit_title">Edit profile</string>
-    <string name="edit_public_note">Other people see these details. For now they are kept on this phone.</string>
+    <string name="edit_public_note">People near you see these details and your photos. The photos are stored on a public media server.</string>
     <string name="edit_photos">Photos</string>
-    <string name="edit_photos_soon">Adding photos comes with the next version.</string>
     <string name="edit_add_photo">Add photo</string>
     <string name="edit_about">About me</string>
     <string name="edit_about_hint">Tell people a little about yourself</string>

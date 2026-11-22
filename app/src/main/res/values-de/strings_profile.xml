@@ -5,9 +5,8 @@
     <string name="profile_job_city">%1$s, %2$s</string>
 
     <string name="edit_title">Profil bearbeiten</string>
-    <string name="edit_public_note">Andere Menschen sehen diese Angaben. Vorerst bleiben sie auf diesem Handy.</string>
+    <string name="edit_public_note">Menschen in deiner Nähe sehen diese Angaben und deine Fotos. Die Fotos liegen auf einem öffentlichen Medienserver.</string>
     <string name="edit_photos">Fotos</string>
-    <string name="edit_photos_soon">Fotos hinzufügen kommt mit der nächsten Version.</string>
     <string name="edit_add_photo">Foto hinzufügen</string>
     <string name="edit_about">Über mich</string>
     <string name="edit_about_hint">Erzähl ein wenig von dir</string>

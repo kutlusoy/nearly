@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="photo_remove">Remove photo</string>
+    <string name="photo_main">Profile picture</string>
+    <string name="photo_make_main">Make first</string>
+    <string name="photo_too_many">You can have up to six photos. Remove one first.</string>
+    <string name="photo_failed">The photo could not be added. Check the connection and try again.</string>
+    <string name="photo_removed">The photo is removed, also from the server.</string>
+    <string name="photo_server_may_keep">The photo is removed from your profile. The server did not confirm the deletion and may still hold the file.</string>
+</resources>
