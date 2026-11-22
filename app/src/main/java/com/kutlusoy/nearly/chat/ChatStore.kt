@@ -9,6 +9,9 @@ enum class MessageStatus { Sending, Sent, Failed, Received }
 
 data class ChatMessage(val id: String, val peer: String, val mine: Boolean, val text: String, val at: Long, val status: MessageStatus, val read: Boolean = true)
 
+// What is known about another person from the public profile on the relays
+data class PeerProfile(val name: String, val about: String = "", val age: Int? = null)
+
 data class Conversation(val peer: String, val last: ChatMessage, val unread: Int)
 
 // Where the chats of one account live on the phone
@@ -30,21 +33,33 @@ interface ChatStore {
 
     fun lastSync(): Long
     fun setLastSync(seconds: Long)
-    fun peerName(peer: String): String?
-    fun setPeerName(peer: String, name: String)
+    fun peerProfile(peer: String): PeerProfile?
+    fun setPeerProfile(peer: String, profile: PeerProfile)
+    fun peerName(peer: String): String? = peerProfile(peer)?.name
+
+    // The people the user follows, kept on this phone
+    fun followed(): List<String>
+    fun setFollowed(peer: String, followed: Boolean)
 }
 
 class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
-    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 1) {
+    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 2) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE messages (id TEXT PRIMARY KEY, peer TEXT NOT NULL, mine INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL, read INTEGER NOT NULL)")
             db.execSQL("CREATE INDEX messages_peer ON messages (peer, at)")
             db.execSQL("CREATE TABLE wraps (id TEXT PRIMARY KEY)")
-            db.execSQL("CREATE TABLE peers (peer TEXT PRIMARY KEY, name TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE peers (peer TEXT PRIMARY KEY, name TEXT NOT NULL, about TEXT NOT NULL DEFAULT '', age INTEGER NOT NULL DEFAULT -1)")
+            db.execSQL("CREATE TABLE followed (peer TEXT PRIMARY KEY)")
             db.execSQL("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         }
 
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+            if (oldVersion < 2) {
+                db.execSQL("ALTER TABLE peers ADD COLUMN about TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE peers ADD COLUMN age INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("CREATE TABLE IF NOT EXISTS followed (peer TEXT PRIMARY KEY)")
+            }
+        }
     }
     private val db get() = helper.writableDatabase
 
@@ -119,11 +134,27 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
     override fun setLastSync(seconds: Long) = setMeta("lastSync", seconds.toString())
 
     @Synchronized
-    override fun peerName(peer: String): String? = db.rawQuery("SELECT name FROM peers WHERE peer = ?", arrayOf(peer)).use { if (it.moveToFirst()) it.getString(0) else null }
+    override fun peerProfile(peer: String): PeerProfile? =
+        db.rawQuery("SELECT name, about, age FROM peers WHERE peer = ?", arrayOf(peer)).use {
+            if (it.moveToFirst()) PeerProfile(it.getString(0), it.getString(1), it.getInt(2).takeIf { age -> age >= 0 }) else null
+        }
 
     @Synchronized
-    override fun setPeerName(peer: String, name: String) {
-        db.insertWithOnConflict("peers", null, ContentValues().apply { put("peer", peer); put("name", name) }, SQLiteDatabase.CONFLICT_REPLACE)
+    override fun setPeerProfile(peer: String, profile: PeerProfile) {
+        db.insertWithOnConflict(
+            "peers", null,
+            ContentValues().apply { put("peer", peer); put("name", profile.name); put("about", profile.about); put("age", profile.age ?: -1) },
+            SQLiteDatabase.CONFLICT_REPLACE,
+        )
+    }
+
+    @Synchronized
+    override fun followed(): List<String> = db.rawQuery("SELECT peer FROM followed ORDER BY rowid", null).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    @Synchronized
+    override fun setFollowed(peer: String, followed: Boolean) {
+        if (followed) db.insertWithOnConflict("followed", null, ContentValues().apply { put("peer", peer) }, SQLiteDatabase.CONFLICT_IGNORE)
+        else db.delete("followed", "peer = ?", arrayOf(peer))
     }
 
     private fun meta(key: String): String? = db.rawQuery("SELECT value FROM meta WHERE key = ?", arrayOf(key)).use { if (it.moveToFirst()) it.getString(0) else null }

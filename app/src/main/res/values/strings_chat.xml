@@ -43,4 +43,13 @@
     <string name="connection_tor_help">Recommended. Relays do not see your IP address.</string>
     <string name="connection_direct">Direct</string>
     <string name="connection_direct_help">For tests. Relays see your IP address and your approximate location.</string>
+
+    <string name="contact_message">Message</string>
+    <string name="contact_id">ID of this person</string>
+    <string name="contact_id_help">Public profile from the relays. With this ID anyone can write to this person.</string>
+    <string name="following_title">Following</string>
+    <string name="following_add_label">Follow with an ID (npub)</string>
+    <string name="following_add_help">Paste the ID of a person to follow and to write to.</string>
+    <string name="following_empty">You do not follow anyone yet. Follow a person with the ID, then you find the profile and the chat here.</string>
+    <string name="newchat_following">People you follow</string>
 </resources>

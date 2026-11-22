@@ -75,12 +75,13 @@ class ChatService(
         return send(old.peer, old.text)
     }
 
-    // The name of the other person from the profile on the relays
-    fun resolveName(peer: String) {
+    // The name, the text and the age of the other person from the public profile on the relays
+    fun resolveProfile(peer: String) {
         if (!isPubkey(peer)) return
         ProfileService(transport, session).load(peer) { data ->
-            if (data != null && data.name != store.peerName(peer)) {
-                store.setPeerName(peer, data.name)
+            val profile = data?.let { PeerProfile(it.name, it.about, it.age) }
+            if (profile != null && profile != store.peerProfile(peer)) {
+                store.setPeerProfile(peer, profile)
                 onChange()
             }
         }

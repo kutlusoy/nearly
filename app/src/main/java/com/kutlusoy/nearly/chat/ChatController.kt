@@ -15,6 +15,9 @@ import kotlinx.coroutines.launch
 
 data class ConversationUi(val peer: String, val name: String, val last: ChatMessage, val unread: Int)
 
+// A person the user knows: the profile from the relays and the ID that is shown on the profile page
+data class ContactUi(val peer: String, val name: String, val about: String, val age: Int?, val npub: String, val followed: Boolean)
+
 enum class ChatError { BadId, ToSelf, TooLong }
 
 data class ChatUiState(
@@ -22,6 +25,8 @@ data class ChatUiState(
     val unread: Int = 0,
     val openPeer: String? = null,
     val openName: String = "",
+    val following: List<ContactUi> = emptyList(),
+    val profile: ContactUi? = null,
     val messages: List<ChatMessage> = emptyList(),
     val network: NetworkStatus = NetworkStatus(),
     val error: ChatError? = null,
@@ -57,7 +62,7 @@ class ChatController(
         chat.publishProfile(name, about, age)
         chat.start()
         refresh()
-        conversationsWithoutName().forEach { chat.resolveName(it) }
+        (conversationsWithoutName() + chatStore.followed()).distinct().forEach { chat.resolveProfile(it) }
     }
 
     fun close() {
@@ -93,7 +98,7 @@ class ChatController(
     fun openConversation(peer: String) {
         val chatStore = store ?: return
         chatStore.markRead(peer)
-        service?.resolveName(peer)
+        service?.resolveProfile(peer)
         _state.update { it.copy(openPeer = peer, error = null) }
         refresh()
     }
@@ -104,6 +109,46 @@ class ChatController(
     }
 
     fun clearError() = _state.update { it.copy(error = null) }
+
+    // Follows a person from the ID and opens the profile page. Gives the reason when the entry cannot be used.
+    fun followById(input: String, ownPubkey: String): Boolean {
+        val peer = ChatService.parsePeer(input)
+        val error = when {
+            peer == null -> ChatError.BadId
+            peer == ownPubkey -> ChatError.ToSelf
+            else -> null
+        }
+        if (error != null || peer == null) {
+            _state.update { it.copy(error = error) }
+            return false
+        }
+        setFollowed(peer, true)
+        openProfile(peer)
+        return true
+    }
+
+    fun setFollowed(peer: String, followed: Boolean) {
+        val chatStore = store ?: return
+        chatStore.setFollowed(peer, followed)
+        if (followed) service?.resolveProfile(peer)
+        refresh()
+    }
+
+    // The profile page of a person: name, text, age and the ID to copy, with the buttons to write and to follow
+    fun openProfile(peer: String) {
+        val chatStore = store ?: return
+        service?.resolveProfile(peer)
+        _state.update { it.copy(profile = contact(chatStore, peer), error = null) }
+    }
+
+    fun closeProfile() = _state.update { it.copy(profile = null, error = null) }
+
+    // From the profile page into the chat
+    fun messageFromProfile() {
+        val peer = _state.value.profile?.peer ?: return
+        _state.update { it.copy(profile = null) }
+        openConversation(peer)
+    }
 
     fun send(text: String) {
         val peer = _state.value.openPeer ?: return
@@ -134,8 +179,12 @@ class ChatController(
         val open = _state.value.openPeer
         val conversations = chatStore.conversations().map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
         val messages = if (open != null) chatStore.messages(open) else emptyList()
+        val following = chatStore.followed().map { contact(chatStore, it) }
+        val profilePeer = _state.value.profile?.peer
         _state.update {
             it.copy(
+                following = following,
+                profile = profilePeer?.let { peer -> contact(chatStore, peer) },
                 conversations = conversations,
                 unread = chatStore.unreadTotal(),
                 messages = messages,
@@ -144,9 +193,16 @@ class ChatController(
         }
     }
 
+    private fun contact(chatStore: ChatStore, peer: String): ContactUi {
+        val profile = chatStore.peerProfile(peer)
+        return ContactUi(peer, profile?.name ?: shortNpub(peer), profile?.about.orEmpty(), profile?.age, npubOf(peer), peer in chatStore.followed())
+    }
+
     private fun displayName(chatStore: ChatStore, peer: String): String = chatStore.peerName(peer) ?: shortNpub(peer)
 
     companion object {
+        fun npubOf(peerHex: String): String = runCatching { NostrKeys.npub(NostrKeys.fromHex(peerHex)) }.getOrDefault(peerHex)
+
         fun shortNpub(peerHex: String): String {
             val npub = runCatching { NostrKeys.npub(NostrKeys.fromHex(peerHex)) }.getOrDefault(peerHex)
             return if (npub.length <= 20) npub else npub.take(12) + "..." + npub.takeLast(6)
