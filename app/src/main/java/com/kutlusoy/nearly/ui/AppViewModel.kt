@@ -35,6 +35,7 @@ import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.registration.SignInForm
 import com.kutlusoy.nearly.ui.theme.ThemeMode
 import java.io.File
+import com.kutlusoy.nearly.media.PhotoProcessor
 import java.io.InputStream
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -152,6 +153,20 @@ class AppViewModel @JvmOverloads constructor(
     fun sendMessage(text: String) = chat.send(text)
 
     fun retryMessage(id: String) = chat.retry(id)
+
+    private val chatPhotoProcessor = PhotoProcessor(maxSide = 2048, quality = 82, maxBytes = com.kutlusoy.nearly.nostr.PhotoTransfer.MAX_BYTES)
+
+    fun chatPhoto(id: String): ByteArray? = chat.photoBytes(id)
+
+    fun chatPhotoViewed(id: String) = chat.photoViewed(id)
+
+    // A high resolution photo for the open chat: prepared here, then sent in pieces through the relays
+    fun sendChatPhoto(open: () -> InputStream, once: Boolean) {
+        viewModelScope.launch {
+            val prepared = runCatching { withContext(Dispatchers.IO) { chatPhotoProcessor.process(open) } }.getOrNull()
+            if (prepared == null) chat.reportPhotoTooBig() else chat.sendPhoto(prepared.jpeg, prepared.width, prepared.height, once)
+        }
+    }
 
     fun openFollowing(open: Boolean) = _state.update { it.copy(followingOpen = open) }
 
