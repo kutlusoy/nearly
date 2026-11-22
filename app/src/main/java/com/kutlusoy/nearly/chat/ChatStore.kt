@@ -5,9 +5,23 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-enum class MessageStatus { Sending, Sent, Failed, Received }
+enum class MessageStatus { Sending, Sent, Failed, Received, Delivered }
 
-data class ChatMessage(val id: String, val peer: String, val mine: Boolean, val text: String, val at: Long, val status: MessageStatus, val read: Boolean = true)
+enum class PhotoState { Receiving, Ready, Gone }
+
+// A high resolution photo inside a chat: the bytes live in the store under the transfer id, never on a server
+data class PhotoInfo(val transfer: String, val width: Int, val height: Int, val size: Int, val once: Boolean, val state: PhotoState, val have: Int, val total: Int) {
+    fun encode() = listOf(transfer, width, height, size, if (once) 1 else 0, state.name, have, total).joinToString("|")
+
+    companion object {
+        fun decode(text: String?): PhotoInfo? {
+            val p = text?.split("|")?.takeIf { it.size == 8 } ?: return null
+            return runCatching { PhotoInfo(p[0], p[1].toInt(), p[2].toInt(), p[3].toInt(), p[4] == "1", PhotoState.valueOf(p[5]), p[6].toInt(), p[7].toInt()) }.getOrNull()
+        }
+    }
+}
+
+data class ChatMessage(val id: String, val peer: String, val mine: Boolean, val text: String, val at: Long, val status: MessageStatus, val read: Boolean = true, val photo: PhotoInfo? = null)
 
 // What is known about another person from the public profile on the relays
 data class PeerProfile(val name: String, val about: String = "", val age: Int? = null)
@@ -20,6 +34,16 @@ interface ChatStore {
     fun add(message: ChatMessage): Boolean
     fun remove(id: String)
     fun setStatus(id: String, status: MessageStatus)
+    fun setPhoto(id: String, photo: PhotoInfo)
+    fun setRead(id: String, read: Boolean)
+
+    // Pieces of photos that are still coming in, and the finished photos
+    fun addChunk(transfer: String, index: Int, data: ByteArray): Boolean
+    fun chunks(transfer: String): List<Pair<Int, ByteArray>>
+    fun dropChunks(transfer: String)
+    fun savePhoto(transfer: String, bytes: ByteArray)
+    fun photoBytes(transfer: String): ByteArray?
+    fun deletePhoto(transfer: String)
     fun messages(peer: String): List<ChatMessage>
     fun message(id: String): ChatMessage?
     fun conversations(): List<Conversation>
@@ -48,9 +72,11 @@ interface ChatStore {
 }
 
 class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
-    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 3) {
+    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 4) {
         override fun onCreate(db: SQLiteDatabase) {
-            db.execSQL("CREATE TABLE messages (id TEXT PRIMARY KEY, peer TEXT NOT NULL, mine INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL, read INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE messages (id TEXT PRIMARY KEY, peer TEXT NOT NULL, mine INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL, read INTEGER NOT NULL, attachment TEXT)")
+            db.execSQL("CREATE TABLE chunks (transfer TEXT NOT NULL, idx INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (transfer, idx))")
+            db.execSQL("CREATE TABLE photos (transfer TEXT PRIMARY KEY, data BLOB NOT NULL)")
             db.execSQL("CREATE INDEX messages_peer ON messages (peer, at)")
             db.execSQL("CREATE TABLE wraps (id TEXT PRIMARY KEY)")
             db.execSQL("CREATE TABLE peers (peer TEXT PRIMARY KEY, name TEXT NOT NULL, about TEXT NOT NULL DEFAULT '', age INTEGER NOT NULL DEFAULT -1)")
@@ -66,6 +92,11 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
                 db.execSQL("CREATE TABLE IF NOT EXISTS followed (peer TEXT PRIMARY KEY)")
             }
             if (oldVersion < 3) db.execSQL("CREATE TABLE IF NOT EXISTS blocked (peer TEXT PRIMARY KEY)")
+            if (oldVersion < 4) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN attachment TEXT")
+                db.execSQL("CREATE TABLE IF NOT EXISTS chunks (transfer TEXT NOT NULL, idx INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (transfer, idx))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS photos (transfer TEXT PRIMARY KEY, data BLOB NOT NULL)")
+            }
         }
     }
     private val db get() = helper.writableDatabase
@@ -80,6 +111,7 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
             put("at", message.at)
             put("status", message.status.name)
             put("read", if (message.read) 1 else 0)
+            put("attachment", message.photo?.encode())
         }
         return db.insertWithOnConflict("messages", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
@@ -95,18 +127,55 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
     }
 
     @Synchronized
+    override fun setPhoto(id: String, photo: PhotoInfo) {
+        db.update("messages", ContentValues().apply { put("attachment", photo.encode()) }, "id = ?", arrayOf(id))
+    }
+
+    @Synchronized
+    override fun setRead(id: String, read: Boolean) {
+        db.update("messages", ContentValues().apply { put("read", if (read) 1 else 0) }, "id = ?", arrayOf(id))
+    }
+
+    @Synchronized
+    override fun addChunk(transfer: String, index: Int, data: ByteArray): Boolean =
+        db.insertWithOnConflict("chunks", null, ContentValues().apply { put("transfer", transfer); put("idx", index); put("data", data) }, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+
+    @Synchronized
+    override fun chunks(transfer: String): List<Pair<Int, ByteArray>> =
+        db.rawQuery("SELECT idx, data FROM chunks WHERE transfer = ? ORDER BY idx", arrayOf(transfer)).use { c -> buildList { while (c.moveToNext()) add(c.getInt(0) to c.getBlob(1)) } }
+
+    @Synchronized
+    override fun dropChunks(transfer: String) {
+        db.delete("chunks", "transfer = ?", arrayOf(transfer))
+    }
+
+    @Synchronized
+    override fun savePhoto(transfer: String, bytes: ByteArray) {
+        db.insertWithOnConflict("photos", null, ContentValues().apply { put("transfer", transfer); put("data", bytes) }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    @Synchronized
+    override fun photoBytes(transfer: String): ByteArray? =
+        db.rawQuery("SELECT data FROM photos WHERE transfer = ?", arrayOf(transfer)).use { if (it.moveToFirst()) it.getBlob(0) else null }
+
+    @Synchronized
+    override fun deletePhoto(transfer: String) {
+        db.delete("photos", "transfer = ?", arrayOf(transfer))
+    }
+
+    @Synchronized
     override fun messages(peer: String): List<ChatMessage> =
-        db.rawQuery("SELECT id, peer, mine, body, at, status, read FROM messages WHERE peer = ? ORDER BY at, rowid", arrayOf(peer)).use { it.rows() }
+        db.rawQuery("SELECT id, peer, mine, body, at, status, read, attachment FROM messages WHERE peer = ? ORDER BY at, rowid", arrayOf(peer)).use { it.rows() }
 
     @Synchronized
     override fun message(id: String): ChatMessage? =
-        db.rawQuery("SELECT id, peer, mine, body, at, status, read FROM messages WHERE id = ?", arrayOf(id)).use { it.rows().firstOrNull() }
+        db.rawQuery("SELECT id, peer, mine, body, at, status, read, attachment FROM messages WHERE id = ?", arrayOf(id)).use { it.rows().firstOrNull() }
 
     @Synchronized
     override fun conversations(): List<Conversation> {
         val peers = db.rawQuery("SELECT peer FROM messages GROUP BY peer", null).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
         return peers.mapNotNull { peer ->
-            val last = db.rawQuery("SELECT id, peer, mine, body, at, status, read FROM messages WHERE peer = ? ORDER BY at DESC, rowid DESC LIMIT 1", arrayOf(peer)).use { it.rows().firstOrNull() }
+            val last = db.rawQuery("SELECT id, peer, mine, body, at, status, read, attachment FROM messages WHERE peer = ? ORDER BY at DESC, rowid DESC LIMIT 1", arrayOf(peer)).use { it.rows().firstOrNull() }
                 ?: return@mapNotNull null
             val unread = db.rawQuery("SELECT COUNT(*) FROM messages WHERE peer = ? AND read = 0", arrayOf(peer)).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
             Conversation(peer, last, unread)
@@ -123,6 +192,9 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
 
     @Synchronized
     override fun deleteConversation(peer: String) {
+        db.rawQuery("SELECT attachment FROM messages WHERE peer = ? AND attachment IS NOT NULL", arrayOf(peer)).use { c ->
+            while (c.moveToNext()) PhotoInfo.decode(c.getString(0))?.let { db.delete("photos", "transfer = ?", arrayOf(it.transfer)); db.delete("chunks", "transfer = ?", arrayOf(it.transfer)) }
+        }
         db.delete("messages", "peer = ?", arrayOf(peer))
     }
 
@@ -181,7 +253,7 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
 
     private fun android.database.Cursor.rows(): List<ChatMessage> = buildList {
         while (moveToNext()) {
-            add(ChatMessage(getString(0), getString(1), getInt(2) == 1, getString(3), getLong(4), MessageStatus.valueOf(getString(5)), getInt(6) == 1))
+            add(ChatMessage(getString(0), getString(1), getInt(2) == 1, getString(3), getLong(4), MessageStatus.valueOf(getString(5)), getInt(6) == 1, PhotoInfo.decode(getString(7))))
         }
     }
 
