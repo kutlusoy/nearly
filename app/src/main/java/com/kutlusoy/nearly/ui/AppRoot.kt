@@ -99,6 +99,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         networkMode = state.networkMode,
                         network = state.chat.network,
                         onNetworkMode = viewModel::setNetworkMode,
+                        messagePolicy = state.messagePolicy,
+                        onMessagePolicy = viewModel::setMessagePolicy,
                     )
                 } else {
                     MainScreen(
@@ -118,6 +120,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onClearChatError = viewModel::clearChatError,
                         onNetworkSettings = { viewModel.openSettings(true) },
                         onOpenFollowing = { viewModel.openFollowing(true) },
+                        onFollowRequest = viewModel::followRequest,
+                        onDeleteRequest = viewModel::deleteRequest,
                     )
                 }
             }

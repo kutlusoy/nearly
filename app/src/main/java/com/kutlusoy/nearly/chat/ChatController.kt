@@ -20,8 +20,12 @@ data class ContactUi(val peer: String, val name: String, val about: String, val 
 
 enum class ChatError { BadId, ToSelf, TooLong }
 
+// Who can write to me: everybody, or only the people I follow and the people I wrote to myself. The rest stays hidden as a request.
+enum class MessagePolicy { Everyone, FollowedOnly }
+
 data class ChatUiState(
     val conversations: List<ConversationUi> = emptyList(),
+    val requests: List<ConversationUi> = emptyList(),
     val unread: Int = 0,
     val openPeer: String? = null,
     val openName: String = "",
@@ -44,6 +48,7 @@ class ChatController(
     private var service: ChatService? = null
     private var store: ChatStore? = null
     private var statusJob: Job? = null
+    private var policy = MessagePolicy.Everyone
 
     fun open(session: Session, name: String, about: String, age: Int?, mode: NetworkMode) {
         close()
@@ -77,6 +82,11 @@ class ChatController(
 
     fun setMode(mode: NetworkMode) {
         link.start(mode)
+    }
+
+    fun setPolicy(next: MessagePolicy) {
+        policy = next
+        refresh()
     }
 
     // Opens the chat with a person from an npub or a hex key. Gives the reason when the entry cannot be used.
@@ -177,7 +187,10 @@ class ChatController(
     private fun refresh() {
         val chatStore = store ?: return
         val open = _state.value.openPeer
-        val conversations = chatStore.conversations().map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
+        val followed = chatStore.followed().toSet()
+        val (visible, hidden) = chatStore.conversations().partition { isVisible(chatStore, it.peer, followed) }
+        val conversations = visible.map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
+        val requests = hidden.map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
         val messages = if (open != null) chatStore.messages(open) else emptyList()
         val following = chatStore.followed().map { contact(chatStore, it) }
         val profilePeer = _state.value.profile?.peer
@@ -186,12 +199,17 @@ class ChatController(
                 following = following,
                 profile = profilePeer?.let { peer -> contact(chatStore, peer) },
                 conversations = conversations,
-                unread = chatStore.unreadTotal(),
+                requests = requests,
+                unread = visible.sumOf { c -> c.unread },
                 messages = messages,
                 openName = if (open != null) displayName(chatStore, open) else "",
             )
         }
     }
+
+    // A person who wrote to me stays visible when I follow the person, or when I wrote first
+    private fun isVisible(chatStore: ChatStore, peer: String, followed: Set<String>): Boolean =
+        policy == MessagePolicy.Everyone || peer in followed || chatStore.messages(peer).any { it.mine }
 
     private fun contact(chatStore: ChatStore, peer: String): ContactUi {
         val profile = chatStore.peerProfile(peer)

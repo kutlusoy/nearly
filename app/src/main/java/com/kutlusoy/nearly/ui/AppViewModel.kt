@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kutlusoy.nearly.chat.ChatController
 import com.kutlusoy.nearly.chat.ChatStore
+import com.kutlusoy.nearly.chat.MessagePolicy
 import com.kutlusoy.nearly.chat.SqliteChatStore
 import com.kutlusoy.nearly.network.NetworkLink
 import com.kutlusoy.nearly.network.NetworkMode
@@ -45,7 +46,7 @@ class AppViewModel @JvmOverloads constructor(
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
     private var session: Session? = null
 
-    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), following = savedFollowing(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), following = savedFollowing(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     init {
@@ -61,8 +62,21 @@ class AppViewModel @JvmOverloads constructor(
         chat.setMode(mode)
     }
 
+    private fun savedPolicy(): MessagePolicy = MessagePolicy.values().firstOrNull { it.name == prefs.getString(KEY_POLICY, null) } ?: MessagePolicy.Everyone
+
+    fun setMessagePolicy(policy: MessagePolicy) {
+        prefs.edit().putString(KEY_POLICY, policy.name).apply()
+        _state.update { it.copy(messagePolicy = policy) }
+        chat.setPolicy(policy)
+    }
+
+    fun followRequest(peer: String) = chat.setFollowed(peer, true)
+
+    fun deleteRequest(peer: String) = chat.deleteConversation(peer)
+
     // The chat opens with the account: network, inbox and the public profile
     private fun openChat(opened: Session, username: String, age: Int?) {
+        chat.setPolicy(_state.value.messagePolicy)
         chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode)
     }
 
@@ -248,5 +262,6 @@ class AppViewModel @JvmOverloads constructor(
         const val KEY_THEME = "theme"
         const val KEY_FOLLOWING = "following"
         const val KEY_NETWORK = "network.mode"
+        const val KEY_POLICY = "message.policy"
     }
 }
