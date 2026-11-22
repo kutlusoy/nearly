@@ -52,7 +52,7 @@ for abi in "${ABIS[@]}"; do
         -v "$CACHE_DIR/helpers-deps:/cache" \
         -v "$CACHE_DIR/build-helpers-$abi:/build" \
         -v "$out:/out" \
-        "$IMAGE" /helpers/build-helpers-in-container.sh
+        "$IMAGE" bash /helpers/build-helpers-in-container.sh
 
     mkdir -p "$APP_DIR/jniLibs/$abi" "$APP_DIR/assets/network-manifest" "$APP_DIR/assets/i2pd"
     install -m 0755 "$out/libtor.so" "$APP_DIR/jniLibs/$abi/libtor.so"
