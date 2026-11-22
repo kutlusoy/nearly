@@ -52,8 +52,9 @@ import com.kutlusoy.nearly.chat.ContactUi
 
 // The public profile of a person from the relays, with the ID to copy and the way to write to the person
 @Composable
-fun ContactProfileScreen(contact: ContactUi, onBack: () -> Unit, onMessage: () -> Unit, onToggleFollow: () -> Unit) {
+fun ContactProfileScreen(contact: ContactUi, onBack: () -> Unit, onMessage: () -> Unit, onToggleFollow: () -> Unit, onBlock: () -> Unit = {}, onUnblock: () -> Unit = {}) {
     BackHandler(onBack = onBack)
+    var confirmBlock by remember { mutableStateOf(false) }
     val context = LocalContext.current
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -88,7 +89,52 @@ fun ContactProfileScreen(contact: ContactUi, onBack: () -> Unit, onMessage: () -
                         }) { Text(stringResource(R.string.reg_words_copy)) }
                     }
                 }
+                if (contact.blocked) {
+                    OutlinedButton(onClick = onUnblock, modifier = Modifier.testTag("unblock-contact")) { Text(stringResource(R.string.block_undo)) }
+                } else if (!confirmBlock) {
+                    OutlinedButton(onClick = { confirmBlock = true }, modifier = Modifier.testTag("block-contact")) {
+                        Text(stringResource(R.string.block_action), color = MaterialTheme.colorScheme.error)
+                    }
+                } else {
+                    Text(stringResource(R.string.block_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = onBlock, modifier = Modifier.testTag("block-confirm")) { Text(stringResource(R.string.block_confirm)) }
+                        OutlinedButton(onClick = { confirmBlock = false }) { Text(stringResource(R.string.newchat_cancel)) }
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+// The people the user blocked, with the way back
+@Composable
+fun BlockedScreen(contacts: List<ContactUi>, onUnblock: (String) -> Unit, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                }
+                Text(stringResource(R.string.blocked_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            Text(stringResource(R.string.blocked_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            if (contacts.isEmpty()) {
+                Text(stringResource(R.string.blocked_empty), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(32.dp))
+            } else {
+                LazyColumn(Modifier.weight(1f)) {
+                    items(contacts, key = { it.peer }) { contact ->
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).testTag("blocked-${contact.peer.take(8)}"), verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(contact.name, size = 44)
+                            Text(contact.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
+                            OutlinedButton(onClick = { onUnblock(contact.peer) }, modifier = Modifier.testTag("unblock-${contact.peer.take(8)}")) { Text(stringResource(R.string.block_undo)) }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    }
+                }
             }
         }
     }

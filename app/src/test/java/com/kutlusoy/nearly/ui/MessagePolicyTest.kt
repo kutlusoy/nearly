@@ -60,27 +60,27 @@ class MessagePolicyTest {
     }
 
     @Test
-    fun everyoneCanWriteByDefaultAndTheChoiceIsKept() {
+    fun onlyFollowedPeopleCanWriteByDefaultAndTheChoiceIsKept() {
         val relay = FakeRelay()
         val vm = signedUp(relay)
-        assertEquals(MessagePolicy.Everyone, vm.state.value.messagePolicy)
+        assertEquals(MessagePolicy.FollowedOnly, vm.state.value.messagePolicy)
         val stranger = newSession()
         val own = NostrKeys.toHex(NostrKeys.decodeNpub(vm.state.value.account!!.npub))
         ChatService(relay, stranger, MemoryChatStore()).send(own, "Hi from a stranger")
-        waitFor { vm.state.value.chat.conversations.size == 1 }
-        assertEquals(1, vm.state.value.chat.unread)
-        assertTrue(vm.state.value.chat.requests.isEmpty())
+        waitFor { vm.state.value.chat.requests.size == 1 }
+        assertTrue(vm.state.value.chat.conversations.isEmpty())
 
-        vm.setMessagePolicy(MessagePolicy.FollowedOnly)
-        assertEquals(MessagePolicy.FollowedOnly, AppViewModel(app, SoftwareSecretBox(), FakeLink(relay)) { MemoryChatStore() }.state.value.messagePolicy)
         vm.setMessagePolicy(MessagePolicy.Everyone)
+        assertEquals(1, vm.state.value.chat.conversations.size)
+        assertEquals(1, vm.state.value.chat.unread)
+        assertEquals(MessagePolicy.Everyone, AppViewModel(app, SoftwareSecretBox(), FakeLink(relay)) { MemoryChatStore() }.state.value.messagePolicy)
+        vm.setMessagePolicy(MessagePolicy.FollowedOnly)
     }
 
     @Test
     fun withFollowedOnlyStrangersStayHiddenUntilFollowedAndAnswersAreShown() {
         val relay = FakeRelay()
         val vm = signedUp(relay)
-        vm.setMessagePolicy(MessagePolicy.FollowedOnly)
         val own = NostrKeys.toHex(NostrKeys.decodeNpub(vm.state.value.account!!.npub))
 
         val spammer = newSession()
@@ -118,7 +118,6 @@ class MessagePolicyTest {
     fun theChatListPointsToTheRequestsAndTheyCanBeFollowedOrDeleted() {
         val relay = FakeRelay()
         val vm = signedUp(relay)
-        vm.setMessagePolicy(MessagePolicy.FollowedOnly)
         val own = NostrKeys.toHex(NostrKeys.decodeNpub(vm.state.value.account!!.npub))
         val a = newSession()
         val b = newSession()
@@ -143,6 +142,7 @@ class MessagePolicyTest {
     @Test
     fun theSettingsOfferBothChoices() {
         val vm = signedUp(FakeRelay())
+        vm.setMessagePolicy(MessagePolicy.Everyone)
         rule.setContent { AppRoot(vm) }
         vm.selectTab(Tab.Profile)
         vm.openSettings(true)
