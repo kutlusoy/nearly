@@ -49,7 +49,14 @@ import com.kutlusoy.nearly.ui.theme.NearlyColors
 // The whole profile, opened from the card before anyone decides: photos, about, what the person looks for, interests
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
-fun PersonDetail(person: Person, onClose: () -> Unit, onAction: (SwipeDirection) -> Unit) {
+fun PersonDetail(
+    person: Person,
+    onClose: () -> Unit,
+    onAction: (SwipeDirection) -> Unit,
+    followed: Boolean = false,
+    onFollow: (() -> Unit)? = null,
+    onMessage: (() -> Unit)? = null,
+) {
     BackHandler(onBack = onClose)
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize()) {
@@ -93,13 +100,23 @@ fun PersonDetail(person: Person, onClose: () -> Unit, onAction: (SwipeDirection)
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (onFollow != null || onMessage != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            onMessage?.let { androidx.compose.material3.Button(onClick = it, modifier = Modifier.testTag("detail-message")) { Text(stringResource(R.string.contact_message)) } }
+                            onFollow?.let {
+                                androidx.compose.material3.OutlinedButton(onClick = it, modifier = Modifier.testTag("detail-follow")) {
+                                    Text(stringResource(if (followed) R.string.feed_following else R.string.feed_follow))
+                                }
+                            }
+                        }
+                    }
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     Section(R.string.detail_looking_for)
                     AssistChip(onClick = {}, label = { Text(stringResource(person.lookingFor.label())) })
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     Section(R.string.detail_about)
                     Text(person.bio, style = MaterialTheme.typography.bodyLarge)
-                    Text(stringResource(person.gender.singular()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (person.genderKnown) Text(stringResource(person.gender.singular()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     person.job?.let { Text(stringResource(R.string.detail_job, it), style = MaterialTheme.typography.bodyMedium) }
                     person.city?.let { Text(stringResource(R.string.detail_lives_in, it), style = MaterialTheme.typography.bodyMedium) }
                     if (person.languages.isNotEmpty()) Text(stringResource(R.string.detail_speaks, person.languages.joinToString(", ")), style = MaterialTheme.typography.bodyMedium)

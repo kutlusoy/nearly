@@ -58,12 +58,13 @@ fun FeedScreen(
     people: List<Person> = SamplePeople,
     following: Set<String> = emptySet(),
     onFollow: (String) -> Unit = {},
+    preview: Boolean = true,
 ) {
     var liked by rememberSaveable { mutableStateOf(listOf<String>()) }
     val feed = remember(posts, following) { feedPosts(posts, following) }
     val nearby = remember(people, following) { nearbyPeople(people, following) }
     Column(Modifier.fillMaxSize()) {
-        NearlyTopBar { AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) }) }
+        NearlyTopBar { if (preview) AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) }) }
         LazyColumn(Modifier.fillMaxSize()) {
             if (nearby.isNotEmpty()) {
                 item {

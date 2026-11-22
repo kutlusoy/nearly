@@ -19,6 +19,8 @@ data class Person(
     val job: String? = null,
     val city: String? = null,
     val languages: List<String> = emptyList(),
+    val key: String? = null,
+    val genderKnown: Boolean = true,
 )
 
 // The picture of one photo slot, until real photos exist every slot has its own gradient
