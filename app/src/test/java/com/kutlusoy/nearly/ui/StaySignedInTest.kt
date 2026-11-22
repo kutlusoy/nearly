@@ -111,7 +111,7 @@ class StaySignedInTest {
         vm.selectTab(Tab.Profile)
         rule.onNodeWithContentDescription("Settings").performClick()
         rule.onNodeWithText("You stay signed in on this phone until you sign out.").assertExists()
-        rule.onNodeWithText("Back up your account").performClick()
+        rule.onNodeWithText("Back up your account").performScrollTo().performClick()
         rule.onNodeWithText("anna@example.org").assertExists()
         rule.onNodeWithText(words).assertDoesNotExist()
         val nsec = vm.backup()!!.nsec
