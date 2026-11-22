@@ -64,8 +64,11 @@ class SqliteChatStoreTest {
     fun wrapsPeerNamesAndTheSyncTimeSurviveANewInstance() {
         SqliteChatStore(app, "a4").apply {
             rememberWrap("w1")
-            setPeerName("p", "Paula")
-            setPeerName("p", "Paula B")
+            setPeerProfile("p", PeerProfile("Paula"))
+            setPeerProfile("p", PeerProfile("Paula B", "Climber", 29))
+            setFollowed("p", true)
+            setFollowed("q", true)
+            setFollowed("q", false)
             setLastSync(1234)
             add(message("k1", "p", 1))
             close()
@@ -74,6 +77,9 @@ class SqliteChatStoreTest {
         assertTrue(again.seenWrap("w1"))
         assertFalse(again.seenWrap("w2"))
         assertEquals("Paula B", again.peerName("p"))
+        assertEquals(PeerProfile("Paula B", "Climber", 29), again.peerProfile("p"))
+        assertEquals(listOf("p"), again.followed())
+        assertNull(again.peerProfile("nobody"))
         assertEquals(1234L, again.lastSync())
         assertEquals(1, again.messages("p").size)
     }

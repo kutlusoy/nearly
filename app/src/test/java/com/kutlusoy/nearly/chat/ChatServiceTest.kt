@@ -162,9 +162,10 @@ class ChatServiceTest {
     @Test
     fun theNameOfThePersonComesFromTheProfileOnTheRelay() {
         val b = service(bob, bobStore)
-        b.publishProfile("Bob", "Hi", 30)
-        service(alice, aliceStore).resolveName(bob.hex())
+        b.publishProfile("Bob", "Hi there", 30)
+        service(alice, aliceStore).resolveProfile(bob.hex())
         assertEquals("Bob", aliceStore.peerName(bob.hex()))
+        assertEquals(PeerProfile("Bob", "Hi there", 30), aliceStore.peerProfile(bob.hex()))
     }
 
     @Test

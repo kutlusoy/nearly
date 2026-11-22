@@ -69,7 +69,8 @@ class FakeLink(override val transport: NostrTransport) : NetworkLink {
 class MemoryChatStore : ChatStore {
     private val rows = LinkedHashMap<String, ChatMessage>()
     private val wraps = HashSet<String>()
-    private val names = HashMap<String, String>()
+    private val profiles = HashMap<String, PeerProfile>()
+    private val follows = LinkedHashSet<String>()
     private var sync = 0L
 
     override fun add(message: ChatMessage): Boolean = if (rows.containsKey(message.id)) false else { rows[message.id] = message; true }
@@ -87,8 +88,10 @@ class MemoryChatStore : ChatStore {
     override fun rememberWrap(id: String) { wraps.add(id) }
     override fun lastSync() = sync
     override fun setLastSync(seconds: Long) { sync = seconds }
-    override fun peerName(peer: String) = names[peer]
-    override fun setPeerName(peer: String, name: String) { names[peer] = name }
+    override fun peerProfile(peer: String) = profiles[peer]
+    override fun setPeerProfile(peer: String, profile: PeerProfile) { profiles[peer] = profile }
+    override fun followed() = follows.toList()
+    override fun setFollowed(peer: String, followed: Boolean) { if (followed) follows.add(peer) else follows.remove(peer) }
 }
 
 fun newSession(): Session {
