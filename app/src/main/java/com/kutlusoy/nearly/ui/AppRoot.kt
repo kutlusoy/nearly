@@ -53,6 +53,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onBack = viewModel::closeProfile,
                         onMessage = viewModel::messageFromProfile,
                         onToggleFollow = { viewModel.toggleContactFollow(contact.peer) },
+                        onBlock = { viewModel.block(contact.peer) },
+                        onUnblock = { viewModel.unblock(contact.peer) },
                     )
                 } else if (state.chat.openPeer != null) {
                     ConversationScreen(
@@ -72,6 +74,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onFollowId = viewModel::followById,
                         onClearError = viewModel::clearChatError,
                         onBack = { viewModel.openFollowing(false) },
+                    )
+                } else if (state.blockedOpen) {
+                    BlockedScreen(
+                        contacts = state.chat.blocked,
+                        onUnblock = viewModel::unblock,
+                        onBack = { viewModel.openBlocked(false) },
                     )
                 } else if (state.discoveryOpen) {
                     DiscoveryScreen(
@@ -101,6 +109,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onNetworkMode = viewModel::setNetworkMode,
                         messagePolicy = state.messagePolicy,
                         onMessagePolicy = viewModel::setMessagePolicy,
+                        blockedCount = state.chat.blocked.size,
+                        onBlocked = { viewModel.openBlocked(true) },
                     )
                 } else {
                     MainScreen(
@@ -122,6 +132,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onOpenFollowing = { viewModel.openFollowing(true) },
                         onFollowRequest = viewModel::followRequest,
                         onDeleteRequest = viewModel::deleteRequest,
+                        onBlockRequest = viewModel::block,
                     )
                 }
             }

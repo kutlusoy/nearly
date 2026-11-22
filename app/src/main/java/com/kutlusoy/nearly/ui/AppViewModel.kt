@@ -62,13 +62,19 @@ class AppViewModel @JvmOverloads constructor(
         chat.setMode(mode)
     }
 
-    private fun savedPolicy(): MessagePolicy = MessagePolicy.values().firstOrNull { it.name == prefs.getString(KEY_POLICY, null) } ?: MessagePolicy.Everyone
+    private fun savedPolicy(): MessagePolicy = MessagePolicy.values().firstOrNull { it.name == prefs.getString(KEY_POLICY, null) } ?: MessagePolicy.FollowedOnly
 
     fun setMessagePolicy(policy: MessagePolicy) {
         prefs.edit().putString(KEY_POLICY, policy.name).apply()
         _state.update { it.copy(messagePolicy = policy) }
         chat.setPolicy(policy)
     }
+
+    fun block(peer: String) = chat.block(peer)
+
+    fun unblock(peer: String) = chat.unblock(peer)
+
+    fun openBlocked(open: Boolean) = _state.update { it.copy(blockedOpen = open) }
 
     fun followRequest(peer: String) = chat.setFollowed(peer, true)
 
@@ -209,7 +215,7 @@ class AppViewModel @JvmOverloads constructor(
         }
     }
 
-    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false) }
+    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false) }
 
     fun openSettings(open: Boolean) = _state.update { it.copy(settingsOpen = open) }
 
@@ -247,7 +253,7 @@ class AppViewModel @JvmOverloads constructor(
         saved.clear()
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {
