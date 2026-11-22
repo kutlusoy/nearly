@@ -1,15 +1,25 @@
 # Nearly: Local AI Guideline
 
-- **Version:** 0.4 (draft)
+- **Version:** 0.5 (draft)
 - **Date:** November 22, 2026
 - **Audience:** Android developers, release engineers and whoever prepares the models
 - **Reference implementation:** none yet. The models repository: [`kutlusoy/models`](https://github.com/kutlusoy/models), folder `nearly/`
 - **Fork base:** [`microsoft/BitNet`](https://github.com/microsoft/BitNet) as `kutlusoy/bitnet` (`bitnet.cpp`, CPU kernels, models)
-- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) section 8, [`guideline-decisions.md`](./guideline-decisions.md) rows 23 to 26, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), model card [`microsoft/bitnet-b1.58-2B-4T`](https://huggingface.co/microsoft/bitnet-b1.58-2B-4T), technical report [arXiv 2504.12285](https://arxiv.org/abs/2504.12285)
+- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) section 8, [`guideline-decisions.md`](./guideline-decisions.md) rows 23 to 26, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`guideline-chat.md`](./guideline-chat.md), model card [`microsoft/bitnet-b1.58-2B-4T`](https://huggingface.co/microsoft/bitnet-b1.58-2B-4T), technical report [arXiv 2504.12285](https://arxiv.org/abs/2504.12285)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional. Sizes in this document are targets or assumptions, not measurements. They MUST be measured before a decision is final.
 
 ---
+
+## 0. Release plan (decided November 22, 2026)
+
+| Step | Content | Condition |
+|---|---|---|
+| Versions 0.0.x | No AI. No AI feature is visible, no model and no native AI runtime is in the APK. The interface of section 5 MAY exist in the code without any part behind it. | now |
+| First AI feature | Translation of chat messages with small translation models, the base pack in the build | the chat works on real phones and the license of the model of the first language pair is checked |
+| Later, undecided | Reply suggestions and summaries with BitNet b1.58 2B4T or a multilingual model | an Android runtime runs on three real phones and the quality test of section 7 passes. If it does not pass, the feature is dropped. |
+
+Reasons: the model card of BitNet says it is an English centered research model, the Android build of `bitnet.cpp` is not documented, the reply pack is about 1 GB and the download system for packs is not built. Suggestions for flirting also need a decision of their own, see section 8.
 
 ## 1. Principles
 
@@ -132,7 +142,8 @@ A pack is offered in a language only if the quality test passes for that languag
 
 - All processing on the device, no network call for the AI itself. The only network traffic is the download of packs and the manifest.
 - The AI reads a chat only when the user uses a feature in that chat.
-- Suggestions are labeled as suggestions and are never sent automatically.
+- Suggestions are labeled as suggestions and are never sent automatically. The person decides and writes the message.
+- Suggestions for flirting MUST NOT mislead the other person about who writes. The question whether such suggestions are offered at all is open until the quality test and a review of the store rules.
 - The AI never decides about people: no automatic block, no ranking of people by looks.
 - A pack never contains user data. The signed manifest and the checksums protect against a swapped file, the license list in the app shows what each model is.
 
@@ -140,6 +151,7 @@ A pack is offered in a language only if the quality test passes for that languag
 
 - [x] Models repository `kutlusoy/models` with the folder `nearly/`, manifest schema, checks and offline signing scripts
 - [x] Model card of BitNet b1.58 2B4T read, facts and consequences in sections 6.1 and 6.2
+- [x] Release plan: no AI in 0.0.x, translation first, reply suggestions later or never
 - [ ] Signature key created offline, backups made, public key built into the app
 - [ ] File size, chat template and tokenizer taken from `microsoft/bitnet-b1.58-2B-4T-gguf`
 - [ ] First pack published (release, manifest entry, signature)
@@ -157,3 +169,4 @@ A pack is offered in a language only if the quality test passes for that languag
 3. Is the base pack of 50 MB or less right, or should the app ship smaller and download even the first pair?
 4. Who holds the signature key and how is it backed up?
 5. Is there an Android build of `bitnet.cpp` in the meantime, or does the fork `kutlusoy/bitnet` have to make one?
+6. Are suggestions for flirting offered at all?
