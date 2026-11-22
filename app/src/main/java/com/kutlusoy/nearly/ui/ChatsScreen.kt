@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,8 +71,15 @@ fun ChatsScreen(
     onClearError: () -> Unit,
     onNetworkSettings: () -> Unit,
     now: Long = System.currentTimeMillis() / 1000,
+    onFollowRequest: (String) -> Unit = {},
+    onDeleteRequest: (String) -> Unit = {},
 ) {
     var dialog by remember { mutableStateOf(false) }
+    var requests by remember { mutableStateOf(false) }
+    if (requests) {
+        RequestsScreen(chat.requests, now, onFollowRequest, onDeleteRequest, onBack = { requests = false })
+        return
+    }
     if (dialog) {
         NewChatScreen(
             error = chat.error,
@@ -92,6 +100,21 @@ fun ChatsScreen(
             }
         }
         NetworkBanner(chat.network, onNetworkSettings)
+        if (chat.requests.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().clickable { requests = true }.padding(horizontal = 16.dp, vertical = 10.dp).testTag("requests-row"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    pluralStringResource(R.plurals.chats_requests, chat.requests.size, chat.requests.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(stringResource(R.string.requests_review), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+        }
         if (chat.conversations.isEmpty()) {
             EmptyChats(myNpub, onStart = { dialog = true })
         } else {
@@ -203,6 +226,50 @@ private fun ConversationRow(item: ConversationUi, now: Long, onClick: () -> Unit
                 Spacer(Modifier.height(4.dp))
                 Box(Modifier.size(20.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
                     Text(item.unread.coerceAtMost(99).toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+        }
+    }
+}
+
+// Messages of people the user does not follow stay here until the user follows the person or deletes them
+@Composable
+private fun RequestsScreen(requests: List<ConversationUi>, now: Long, onFollow: (String) -> Unit, onDelete: (String) -> Unit, onBack: () -> Unit) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+            }
+            Text(stringResource(R.string.requests_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        Text(
+            stringResource(R.string.requests_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+        if (requests.isEmpty()) {
+            Text(stringResource(R.string.requests_empty), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(32.dp))
+        } else {
+            LazyColumn(Modifier.weight(1f)) {
+                items(requests, key = { it.peer }) { item ->
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).testTag("request-${item.peer.take(8)}")) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(item.name, size = 44)
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text(item.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(item.last.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                            Text(formatTime(item.last.at, now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onFollow(item.peer) }, modifier = Modifier.testTag("request-follow-${item.peer.take(8)}")) { Text(stringResource(R.string.requests_follow)) }
+                            OutlinedButton(onClick = { onDelete(item.peer) }, modifier = Modifier.testTag("request-delete-${item.peer.take(8)}")) { Text(stringResource(R.string.requests_delete)) }
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                 }
             }
         }

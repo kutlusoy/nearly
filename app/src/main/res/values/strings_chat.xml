@@ -52,4 +52,21 @@
     <string name="following_add_help">Paste the ID of a person to follow and to write to.</string>
     <string name="following_empty">You do not follow anyone yet. Follow a person with the ID, then you find the profile and the chat here.</string>
     <string name="newchat_following">People you follow</string>
+
+    <plurals name="chats_requests">
+        <item quantity="one">%d hidden message from a person you do not follow</item>
+        <item quantity="other">%d hidden chats from people you do not follow</item>
+    </plurals>
+    <string name="requests_review">Review</string>
+    <string name="requests_title">Message requests</string>
+    <string name="requests_help">These people wrote to you but you do not follow them. Their messages stay hidden until you follow them. This keeps spam out.</string>
+    <string name="requests_empty">No message requests.</string>
+    <string name="requests_follow">Follow and show</string>
+    <string name="requests_delete">Delete</string>
+
+    <string name="settings_messages">Who can write to me</string>
+    <string name="policy_everyone">Everyone</string>
+    <string name="policy_everyone_help">Anyone who has your ID can send you a message.</string>
+    <string name="policy_followed">Only people I follow</string>
+    <string name="policy_followed_help">Messages of other people stay hidden as requests, so spam stays out. A person who answers your message is always shown.</string>
 </resources>

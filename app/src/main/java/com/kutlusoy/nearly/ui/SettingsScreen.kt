@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kutlusoy.nearly.BuildConfig
 import com.kutlusoy.nearly.R
+import com.kutlusoy.nearly.chat.MessagePolicy
 import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.network.NetworkStatus
 import com.kutlusoy.nearly.ui.theme.ThemeMode
@@ -60,6 +61,8 @@ fun SettingsScreen(
     networkMode: NetworkMode = NetworkMode.Tor,
     network: NetworkStatus = NetworkStatus(),
     onNetworkMode: (NetworkMode) -> Unit = {},
+    messagePolicy: MessagePolicy = MessagePolicy.Everyone,
+    onMessagePolicy: (MessagePolicy) -> Unit = {},
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
     BackHandler(onBack = onBack)
@@ -76,6 +79,12 @@ fun SettingsScreen(
                 ThemeOption(R.string.theme_light, themeMode == ThemeMode.Light) { onTheme(ThemeMode.Light) }
                 ThemeOption(R.string.theme_dark, themeMode == ThemeMode.Dark) { onTheme(ThemeMode.Dark) }
                 ThemeOption(R.string.theme_system, themeMode == ThemeMode.System) { onTheme(ThemeMode.System) }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Section(R.string.settings_messages)
+                ConnectionOption(R.string.policy_everyone, R.string.policy_everyone_help, messagePolicy == MessagePolicy.Everyone) { onMessagePolicy(MessagePolicy.Everyone) }
+                ConnectionOption(R.string.policy_followed, R.string.policy_followed_help, messagePolicy == MessagePolicy.FollowedOnly) { onMessagePolicy(MessagePolicy.FollowedOnly) }
 
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)

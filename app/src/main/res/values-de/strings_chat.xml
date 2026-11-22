@@ -52,4 +52,21 @@
     <string name="following_add_help">Füge die ID einer Person ein, der du folgen und schreiben willst.</string>
     <string name="following_empty">Du folgst noch niemandem. Folge einer Person mit der ID, dann findest du hier Profil und Chat.</string>
     <string name="newchat_following">Menschen, denen du folgst</string>
+
+    <plurals name="chats_requests">
+        <item quantity="one">%d verborgene Nachricht von einer Person, der du nicht folgst</item>
+        <item quantity="other">%d verborgene Chats von Menschen, denen du nicht folgst</item>
+    </plurals>
+    <string name="requests_review">Ansehen</string>
+    <string name="requests_title">Nachrichtenanfragen</string>
+    <string name="requests_help">Diese Menschen haben dir geschrieben, aber du folgst ihnen nicht. Ihre Nachrichten bleiben verborgen, bis du ihnen folgst. So bleibt Spam draußen.</string>
+    <string name="requests_empty">Keine Nachrichtenanfragen.</string>
+    <string name="requests_follow">Folgen und anzeigen</string>
+    <string name="requests_delete">Löschen</string>
+
+    <string name="settings_messages">Wer mir schreiben darf</string>
+    <string name="policy_everyone">Jeder</string>
+    <string name="policy_everyone_help">Wer deine ID hat, kann dir eine Nachricht schicken.</string>
+    <string name="policy_followed">Nur Menschen, denen ich folge</string>
+    <string name="policy_followed_help">Nachrichten anderer bleiben als Anfragen verborgen, so bleibt Spam draußen. Wer auf deine Nachricht antwortet, wird immer angezeigt.</string>
 </resources>
