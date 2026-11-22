@@ -8,6 +8,7 @@ import com.kutlusoy.nearly.nostr.DiscoveryService
 import com.kutlusoy.nearly.nostr.Event
 import com.kutlusoy.nearly.nostr.Geohash
 import com.kutlusoy.nearly.nostr.NostrKeys
+import com.kutlusoy.nearly.nostr.PhotoRef
 import com.kutlusoy.nearly.nostr.Session
 import com.kutlusoy.nearly.ui.Gender
 import com.kutlusoy.nearly.ui.LookingFor
@@ -63,6 +64,7 @@ class NearbyController(
         val about: String,
         val interests: List<String>,
         val visible: Boolean,
+        val photos: List<PhotoRef> = emptyList(),
     )
 
     fun open(opened: Session) {
@@ -136,7 +138,7 @@ class NearbyController(
                 name = s.name, age = age,
                 gender = s.gender?.let { GENDER_CODE.getValue(it) },
                 looking = s.looking?.let { it.name.lowercase() },
-                languages = s.languages, job = s.job, city = s.city, about = s.about, interests = s.interests, cell = cell,
+                languages = s.languages, job = s.job, city = s.city, about = s.about, interests = s.interests, cell = cell, photos = s.photos,
             ),
             at,
         )
@@ -197,12 +199,13 @@ class NearbyController(
                 lookingFor = card.looking?.let { n -> LookingFor.values().firstOrNull { it.name.lowercase() == n } } ?: LookingFor.Unsure,
                 interests = card.interests,
                 activeDaysAgo = ((now - card.createdAt) / 86400).toInt().coerceAtLeast(0),
-                photos = 1,
+                photos = card.photos.size.coerceAtLeast(1),
                 job = card.job.ifBlank { null },
                 city = card.city.ifBlank { null },
                 languages = card.languages.mapNotNull { LANGUAGE_NAMES[it] }.distinct(),
                 key = card.pubkey,
                 genderKnown = gender != null,
+                photoRefs = card.photos,
             )
         }
     }

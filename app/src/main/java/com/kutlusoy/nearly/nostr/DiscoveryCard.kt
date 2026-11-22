@@ -26,6 +26,7 @@ data class DiscoveryCard(
     val about: String,
     val interests: List<String>,
     val cell: String,
+    val photos: List<PhotoRef> = emptyList(),
 )
 
 // What the own phone writes into a card
@@ -40,6 +41,7 @@ data class CardData(
     val about: String = "",
     val interests: List<String> = emptyList(),
     val cell: String,
+    val photos: List<PhotoRef> = emptyList(),
 )
 
 // An addressable event (kind 30078, NIP-78) with the tags nearly and g. Foreign cards are checked like every foreign event.
@@ -54,6 +56,7 @@ object CardCodec {
     const val MAX_TEXT = 60
     const val MAX_INTERESTS = 10
     const val MAX_LANGUAGES = 10
+    const val MAX_PHOTOS = 6
     const val MIN_AGE = 18
     const val MAX_AGE = 99
     private val GENDERS = setOf("w", "m", "x")
@@ -69,7 +72,7 @@ object CardCodec {
             listOf("g", data.cell.take(4)),
             listOf("g", data.cell.take(3)),
             listOf("expiration", (now + LIFETIME).toString()),
-        )
+        ) + data.photos.take(MAX_PHOTOS).map { PostCodec.imetaTag(it) }
         val content = buildJsonObject {
             put("v", 1)
             put("name", data.name.take(MAX_NAME))
@@ -124,6 +127,7 @@ object CardCodec {
             about = clean(o["about"]?.text(), MAX_ABOUT, keepNewlines = true),
             interests = (o["interests"] as? JsonArray).orEmpty().mapNotNull { clean(it.text(), 24).takeIf { s -> s.isNotBlank() } }.distinct().take(MAX_INTERESTS),
             cell = cell,
+            photos = PostCodec.parseImeta(event, MAX_PHOTOS),
         )
     }
 
