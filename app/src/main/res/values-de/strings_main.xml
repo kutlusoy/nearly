@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="swipe_preview">Vorschau</string>
+    <string name="swipe_later">Jetzt nicht</string>
+    <string name="swipe_skip">Überspringen</string>
+    <string name="swipe_like">Gefällt mir</string>
+    <string name="swipe_stamp_like">LIKE</string>
+    <string name="swipe_stamp_later">SPÄTER</string>
+    <string name="swipe_stamp_skip">WEITER</string>
+    <string name="swipe_distance">%1$.1f km entfernt</string>
+    <string name="swipe_hint">Rechts: gefällt mir. Links: jetzt nicht. Hoch: überspringen.</string>
+    <string name="swipe_empty_title">Niemand mehr in der Nähe</string>
+    <string name="swipe_empty_help">Komm später wieder, neue Leute erscheinen, sobald sie aktiv sind.</string>
+    <string name="swipe_again">Beispielprofile noch einmal zeigen</string>
+
+    <string name="profile_posts">Beiträge</string>
+    <string name="profile_followers">Follower</string>
+    <string name="profile_following">Folge ich</string>
+    <string name="profile_no_photos">Noch keine Fotos</string>
+    <string name="profile_no_photos_help">Deine Fotos erscheinen hier.</string>
+
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_appearance">Darstellung</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="theme_system">Wie das Handy</string>
+    <string name="settings_account">Konto</string>
+    <string name="settings_username">Benutzername</string>
+    <string name="settings_age">Alter</string>
+    <string name="settings_about">Über</string>
+    <string name="settings_version">Version</string>
+    <string name="signout_title">Abmelden?</string>
+    <string name="signout_help">Zum erneuten Anmelden brauchst du Benutzername, E-Mail und deine fünf Wiederherstellungswörter.</string>
+    <string name="signout_confirm">Abmelden</string>
+    <string name="signout_cancel">Abbrechen</string>
+</resources>

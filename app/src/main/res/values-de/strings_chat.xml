@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chats_empty_title">Noch keine Chats</string>
+    <string name="chats_empty_help">Chats sind privat und Ende-zu-Ende-verschlüsselt. Starte einen mit der ID eines anderen Menschen, oder teile deine ID, damit er dir schreiben kann.</string>
+    <string name="chats_start">Chat starten</string>
+    <string name="chats_new">Neuer Chat</string>
+    <string name="chats_my_id">Deine ID</string>
+    <string name="chats_my_id_help">Teile diese ID. Wer sie hat, kann dir schreiben.</string>
+    <string name="chats_share">Teilen</string>
+    <string name="chats_share_text">Schreib mir auf Nearly: %1$s</string>
+    <string name="chats_you">Du: %1$s</string>
+    <string name="chats_delete">Chat löschen</string>
+
+    <string name="newchat_title">Chat starten</string>
+    <string name="newchat_label">ID der Person (npub)</string>
+    <string name="newchat_help">Die Person schickt dir ihre ID, die mit npub1 beginnt. Du findest sie unter Einstellungen, Konto sichern.</string>
+    <string name="newchat_paste">Einfügen</string>
+    <string name="newchat_start">Starten</string>
+    <string name="newchat_cancel">Abbrechen</string>
+    <string name="newchat_bad_id">Das ist keine gültige ID. Sie beginnt mit npub1.</string>
+    <string name="newchat_to_self">Das ist deine eigene ID.</string>
+
+    <string name="conversation_input">Nachricht</string>
+    <string name="conversation_send">Senden</string>
+    <string name="conversation_empty">Noch keine Nachrichten. Sag Hallo.</string>
+    <string name="conversation_encrypted">Ende-zu-Ende-verschlüsselt. Nur du und diese Person können es lesen.</string>
+    <string name="conversation_too_long">Die Nachricht ist zu lang.</string>
+    <string name="message_sending">Wird gesendet</string>
+    <string name="message_sent">Gesendet</string>
+    <string name="message_failed">Nicht gesendet. Tippe, um es noch einmal zu versuchen.</string>
+
+    <string name="network_online">Online, %1$d von %2$d Relays</string>
+    <string name="network_connecting">Verbinde mit Relays</string>
+    <string name="network_starting_tor">Tor startet, %1$d %%</string>
+    <string name="network_tor_missing">Tor ist nicht Teil dieser Version</string>
+    <string name="network_off">Offline</string>
+    <string name="network_banner_help">Nachrichten warten auf diesem Handy und werden gesendet, sobald die Verbindung klappt.</string>
+    <string name="network_tor_missing_help">Für einen Test kannst du in den Einstellungen die direkte Verbindung nutzen. Relays sehen dann deine IP-Adresse.</string>
+    <string name="network_settings">Verbindungseinstellungen</string>
+
+    <string name="settings_connection">Verbindung</string>
+    <string name="connection_tor">Über Tor</string>
+    <string name="connection_tor_help">Empfohlen. Relays sehen deine IP-Adresse nicht.</string>
+    <string name="connection_direct">Direkt</string>
+    <string name="connection_direct_help">Für Tests. Relays sehen deine IP-Adresse und deinen ungefähren Standort.</string>
+
+    <string name="contact_message">Nachricht</string>
+    <string name="contact_id">ID dieser Person</string>
+    <string name="contact_id_help">Öffentliches Profil von den Relays. Mit dieser ID kann jeder dieser Person schreiben.</string>
+    <string name="following_title">Folge ich</string>
+    <string name="following_add_label">Mit einer ID (npub) folgen</string>
+    <string name="following_add_help">Füge die ID einer Person ein, der du folgen und schreiben willst.</string>
+    <string name="following_empty">Du folgst noch niemandem. Folge einer Person mit der ID, dann findest du hier Profil und Chat.</string>
+    <string name="newchat_following">Menschen, denen du folgst</string>
+
+    <plurals name="chats_requests">
+        <item quantity="one">%d verborgene Nachricht von einer Person, der du nicht folgst</item>
+        <item quantity="other">%d verborgene Chats von Menschen, denen du nicht folgst</item>
+    </plurals>
+    <string name="requests_review">Ansehen</string>
+    <string name="requests_title">Nachrichtenanfragen</string>
+    <string name="requests_help">Diese Menschen haben dir geschrieben, aber du folgst ihnen nicht. Ihre Nachrichten bleiben verborgen, bis du ihnen folgst. So bleibt Spam draußen.</string>
+    <string name="requests_empty">Keine Nachrichtenanfragen.</string>
+    <string name="requests_follow">Folgen und anzeigen</string>
+    <string name="requests_delete">Löschen</string>
+
+    <string name="settings_messages">Wer mir schreiben darf</string>
+    <string name="policy_everyone">Jeder</string>
+    <string name="policy_everyone_help">Wer deine ID hat, kann dir eine Nachricht schicken.</string>
+    <string name="policy_followed">Nur Menschen, denen ich folge</string>
+    <string name="policy_followed_help">Nachrichten anderer bleiben als Anfragen verborgen, so bleibt Spam draußen. Wer auf deine Nachricht antwortet, wird immer angezeigt.</string>
+</resources>

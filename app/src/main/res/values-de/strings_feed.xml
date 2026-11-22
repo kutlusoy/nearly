@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="feed_likes">
+        <item quantity="one">%d Gefällt mir</item>
+        <item quantity="other">%d Gefällt mir</item>
+    </plurals>
+    <string name="feed_comment">Kommentieren</string>
+    <string name="feed_share">Teilen</string>
+    <string name="feed_minutes">vor %1$d Min.</string>
+    <string name="feed_hours">vor %1$d Std.</string>
+    <string name="feed_days">vor %1$d Tg.</string>
+</resources>

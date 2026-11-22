@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="discovery_title">Entdecken-Einstellungen</string>
+    <string name="discovery_reset">Zurücksetzen</string>
+    <string name="discovery_note">Diese Einstellungen bestimmen, wen du in Swipe und auf der Karte siehst. Der Feed zeigt immer die Menschen, denen du folgst.</string>
+
+    <string name="discovery_area">Bereich</string>
+    <string name="area_current">Meine aktuelle Gegend</string>
+    <string name="area_current_help">Ungefähr, etwa 500 m genau. Nie deine genaue Position.</string>
+    <string name="area_other">Eine andere Gegend</string>
+    <string name="area_other_help">Kommt mit der Karte.</string>
+
+    <string name="discovery_show_me">Zeige mir</string>
+    <string name="gender_everyone">Alle</string>
+    <string name="gender_woman">Frauen</string>
+    <string name="gender_man">Männer</string>
+    <string name="gender_nonbinary">Nicht-binär</string>
+    <string name="gender_woman_single">Frau</string>
+    <string name="gender_man_single">Mann</string>
+    <string name="gender_nonbinary_single">Nicht-binär</string>
+
+    <string name="discovery_looking_for">Ich suche</string>
+    <string name="goal_any">Alles</string>
+    <string name="goal_serious">Etwas Ernstes</string>
+    <string name="goal_open">Ernstes, offen für Lockeres</string>
+    <string name="goal_casual">Etwas Lockeres</string>
+    <string name="goal_fun">Nur Spaß</string>
+    <string name="goal_friends">Neue Freunde</string>
+    <string name="goal_unsure">Noch unentschlossen</string>
+
+    <string name="discovery_distance">Maximale Entfernung</string>
+    <string name="distance_value">%1$d km</string>
+    <string name="discovery_further">Menschen etwas weiter weg zeigen, wenn niemand passt</string>
+    <string name="discovery_further_help">Bis zur doppelten Entfernung, nach allen, die passen.</string>
+
+    <string name="discovery_age">Alter</string>
+    <string name="age_value">%1$d bis %2$d</string>
+    <string name="discovery_age_slack">Menschen knapp außerhalb dieser Spanne zeigen, wenn niemand passt</string>
+    <string name="discovery_age_slack_help">Bis zu 5 Jahre älter oder jünger.</string>
+
+    <string name="discovery_activity">Aktivität</string>
+    <string name="discovery_recent">Nur Menschen, die in den letzten 7 Tagen aktiv waren</string>
+
+    <string name="discovery_privacy">Privatsphäre</string>
+    <string name="discovery_visible">Mich in Swipe zeigen</string>
+    <string name="discovery_visible_help">Ausschalten, um dich umzusehen, ohne gesehen zu werden.</string>
+    <string name="discovery_show_distance">Meine Entfernung zeigen</string>
+
+    <string name="settings_discovery">Entdecken-Einstellungen</string>
+    <string name="settings_discovery_help">Entfernung, Alter und wen du treffen möchtest</string>
+
+    <string name="swipe_filters">Entdecken-Einstellungen</string>
+    <string name="swipe_no_match_title">Niemand passt zu deinen Einstellungen</string>
+    <string name="swipe_no_match_help">Erweitere die Entfernung oder die Altersspanne, oder ändere, wen du suchst.</string>
+    <string name="swipe_change_filters">Einstellungen ändern</string>
+    <string name="swipe_open_profile">Profil ansehen</string>
+
+    <string name="detail_close">Schließen</string>
+    <string name="detail_about">Über mich</string>
+    <string name="detail_looking_for">Sucht</string>
+    <string name="detail_interests">Interessen</string>
+    <string name="detail_active_today">Heute aktiv</string>
+    <string name="detail_active_days">Vor %1$d Tagen aktiv</string>
+    <string name="detail_photo">Foto %1$d von %2$d</string>
+</resources>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="rose" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF4D6D"/>
+      <stop offset="1" stop-color="#FF8FA3"/>
+    </linearGradient>
+  </defs>
+  <circle cx="200" cy="200" r="180" fill="url(#rose)"/>
+  <g transform="translate(110 110) scale(7.5)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z"/>
+  </g>
+  <text x="430" y="248" font-family="Inter, Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="170" font-weight="700" fill="#FF4D6D" letter-spacing="-4">Nearly</text>
+</svg>

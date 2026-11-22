@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_back">Zurück</string>
+    <string name="common_continue">Weiter</string>
+    <string name="step_of">Schritt %1$d von %2$d</string>
+    <string name="error_generic">Etwas ist schiefgegangen. Bitte versuche es noch einmal.</string>
+
+    <string name="welcome_tagline">Lerne Menschen in deiner Nähe kennen.\nPrivat von Grund auf.</string>
+    <string name="welcome_create">Konto erstellen</string>
+    <string name="welcome_sign_in">Anmelden</string>
+    <string name="welcome_footer">Kein Server und kein Tracking. Dein Konto entsteht aus Benutzername, E-Mail und fünf Wörtern.</string>
+
+    <string name="reg_username_title">Wähle einen Benutzernamen</string>
+    <string name="reg_username_label">Benutzername</string>
+    <string name="reg_username_help">Das ist dein öffentlicher Name. 3 bis 24 Buchstaben, Ziffern, Punkt, Bindestrich oder Unterstrich.</string>
+    <string name="err_username_short">Mindestens 3 Zeichen.</string>
+    <string name="err_username_long">Höchstens 24 Zeichen.</string>
+    <string name="err_username_chars">Nur Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich, und am Anfang ein Buchstabe oder eine Ziffer.</string>
+
+    <string name="reg_email_title">Deine E-Mail</string>
+    <string name="reg_email_label">E-Mail</string>
+    <string name="reg_email_again">E-Mail wiederholen</string>
+    <string name="reg_email_help">Wird nur gebraucht, um dein Konto auf einem anderen Handy wiederherzustellen. Sie wird nirgends hingeschickt und niemand sieht sie. Tippe sie sorgfältig: Ein Tippfehler öffnet ein anderes Konto.</string>
+    <string name="err_email_invalid">Das sieht nicht wie eine E-Mail-Adresse aus.</string>
+    <string name="err_email_mismatch">Die beiden E-Mail-Adressen sind verschieden.</string>
+
+    <string name="reg_words_title">Deine Wiederherstellungswörter</string>
+    <string name="reg_words_help">Diese fünf Wörter sind das Geheimnis deines Kontos. Zusammen mit Benutzername und E-Mail holen sie dein Konto auf jedem Handy zurück.</string>
+    <string name="reg_words_new">Neue Wörter</string>
+    <string name="reg_words_copy">Kopieren</string>
+    <string name="reg_words_warning">Schreibe sie auf und bewahre sie sicher auf. Wer sie, deinen Benutzernamen und deine E-Mail kennt, kann dein Konto übernehmen. Es gibt kein Zurücksetzen: Verlierst du die Wörter, verlierst du das Konto. Die Wörter lassen sich später nicht ändern.</string>
+    <string name="reg_words_confirm">Ich habe sie aufgeschrieben</string>
+
+    <string name="reg_birth_title">Dein Geburtsdatum</string>
+    <string name="reg_birth_day">Tag</string>
+    <string name="reg_birth_month">Monat</string>
+    <string name="reg_birth_year">Jahr</string>
+    <string name="reg_birth_help">Du musst mindestens 18 sein. Dein Profil zeigt dein Alter, das Geburtsdatum bleibt auf diesem Handy.</string>
+    <string name="err_date_invalid">Dieses Datum gibt es nicht.</string>
+    <string name="err_under_age">Nearly ist nur für Menschen ab 18.</string>
+
+    <string name="reg_create">Konto erstellen</string>
+    <string name="reg_creating">Dein Konto wird erstellt</string>
+    <string name="reg_creating_help">Das dauert ein paar Sekunden.</string>
+    <string name="reg_exists">Ein Konto mit diesem Benutzernamen und dieser E-Mail ist schon auf diesem Handy. Bitte melde dich an.</string>
+
+    <string name="signin_title">Anmelden</string>
+    <string name="signin_words_label">Deine fünf Wiederherstellungswörter</string>
+    <string name="signin_words_count">%1$d von 5 Wörtern</string>
+    <string name="signin_button">Anmelden</string>
+    <string name="signin_busy">Du wirst angemeldet</string>
+    <string name="signin_help">Prüfe auf einem neuen Handy jede Eingabe genau: Eine falsche Eingabe öffnet ein anderes, leeres Konto.</string>
+    <string name="signin_wrong">Das hat nicht geklappt. Prüfe Benutzername, E-Mail und Wörter.</string>
+
+    <string name="tab_swipe">Swipe</string>
+    <string name="tab_map">Karte</string>
+    <string name="tab_feed">Feed</string>
+    <string name="tab_chats">Chats</string>
+    <string name="tab_profile">Profil</string>
+    <string name="swipe_soon">Wische durch Menschen in deiner Nähe.</string>
+    <string name="map_soon">Sieh, wer in deiner Umgebung gerade aktiv ist.</string>
+    <string name="feed_soon">Fotos und Beiträge der Menschen, denen du folgst.</string>
+    <string name="chats_soon">Private, Ende-zu-Ende-verschlüsselte Chats.</string>
+    <string name="soon_badge">Kommt bald</string>
+
+    <string name="profile_age">%1$d Jahre</string>
+    <string name="profile_id">Deine ID</string>
+    <string name="profile_sign_out">Abmelden</string>
+    <string name="profile_version">Version %1$s</string>
+    <string name="profile_test_note">Das ist eine frühe Testversion. Noch funktioniert nicht alles.</string>
+</resources>

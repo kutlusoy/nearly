@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_complete">Profile %1$d%% complete</string>
+    <string name="profile_job_city">%1$s, %2$s</string>
+
+    <string name="edit_title">Edit profile</string>
+    <string name="edit_public_note">Other people see these details. For now they are kept on this phone.</string>
+    <string name="edit_photos">Photos</string>
+    <string name="edit_photos_soon">Adding photos comes with the next version.</string>
+    <string name="edit_add_photo">Add photo</string>
+    <string name="edit_about">About me</string>
+    <string name="edit_about_hint">Tell people a little about yourself</string>
+    <string name="edit_counter">%1$d / %2$d</string>
+    <string name="edit_i_am">I am</string>
+    <string name="edit_looking_for">Looking for</string>
+    <string name="edit_interests">Interests</string>
+    <string name="edit_interests_add">Add your own</string>
+    <string name="edit_interests_add_button">Add</string>
+    <string name="edit_interests_max">At most %1$d interests.</string>
+    <string name="edit_languages">Languages I speak</string>
+    <string name="edit_basics">Basics</string>
+    <string name="edit_job">Job</string>
+    <string name="edit_school">School</string>
+    <string name="edit_city">Lives in</string>
+    <string name="edit_height">Height (cm)</string>
+    <string name="edit_lifestyle">Lifestyle</string>
+    <string name="edit_drinking">Drinking</string>
+    <string name="edit_smoking">Smoking</string>
+    <string name="edit_exercise">Exercise</string>
+    <string name="freq_never">Never</string>
+    <string name="freq_sometimes">Sometimes</string>
+    <string name="freq_often">Often</string>
+
+    <string name="detail_lives_in">Lives in %1$s</string>
+    <string name="detail_speaks">Speaks %1$s</string>
+    <string name="detail_job">Job: %1$s</string>
+
+    <string name="feed_nearby">People near you</string>
+    <string name="feed_follow">Follow</string>
+    <string name="feed_following">Following</string>
+</resources>

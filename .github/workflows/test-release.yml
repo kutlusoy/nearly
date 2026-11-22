@@ -1,0 +1,82 @@
+name: Test release
+
+# Builds the debug app with the public test key and publishes it as a pre-release test-<number>.
+# No secrets are needed. The app installs next to the real app (application ID com.kutlusoy.nearly.debug).
+# Unlike the Release workflow it does not wait for the Tor and I2P helpers, use it for a quick look at a build.
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: Short note for the release text (optional)
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-release
+  cancel-in-progress: false
+
+jobs:
+  test-release:
+    name: Build and publish the test release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NOTE: ${{ inputs.note }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare the public test key
+        run: |
+          if [[ ! -f app/debug.keystore ]]; then base64 -d app/debug.keystore.b64 > app/debug.keystore; fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+
+      - name: Unit tests
+        run: gradle testDebugUnitTest --stacktrace
+
+      - name: Build the debug APK
+        run: gradle assembleDebug -PtestBuild=${{ github.run_number }} --stacktrace
+
+      - name: Collect files
+        run: |
+          version=$(tr -d '[:space:]' < app/version.txt)
+          short=${GITHUB_SHA::7}
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "TAG=test-${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/*.apk "dist/Nearly-$version-test${GITHUB_RUN_NUMBER}-$short.apk"
+          (cd dist && sha256sum ./*.apk > SHA256SUMS.txt)
+          {
+            echo "Test build of version $version from commit $short (branch $GITHUB_REF_NAME)."
+            echo
+            echo "Signed with the public test key of the repository. For testing only, not for the store."
+            echo "Application ID: com.kutlusoy.nearly.debug, so it installs next to the real app."
+            echo "Built without Tor and I2P."
+            if [[ -n "$NOTE" ]]; then echo; echo "$NOTE"; fi
+          } > dist/NOTES.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-release
+          path: dist
+
+      - name: Publish the pre-release
+        run: |
+          gh release create "$TAG" dist/*.apk dist/SHA256SUMS.txt \
+            --prerelease --target "$GITHUB_SHA" --title "Nearly test $GITHUB_RUN_NUMBER ($VERSION)" --notes-file dist/NOTES.md
+
+      - name: Remove old test releases
+        run: |
+          gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease and (.tagName | startswith("test-"))) | .tagName' \
+            | sort -t- -k2 -n -r | tail -n +6 \
+            | while read -r old; do gh release delete "$old" --cleanup-tag --yes; done

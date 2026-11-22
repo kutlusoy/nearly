@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="rose" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF4D6D"/>
+      <stop offset="1" stop-color="#FF8FA3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="#FFFBFA"/>
+  <circle cx="640" cy="220" r="130" fill="url(#rose)"/>
+  <g transform="translate(570 150) scale(5.8333)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z"/>
+  </g>
+  <text x="640" y="470" text-anchor="middle" font-family="Inter, Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="120" font-weight="700" fill="#16151A">Nearly</text>
+  <text x="640" y="540" text-anchor="middle" font-family="Inter, Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="38" fill="#5E5A60">Meet people near you. Private by design.</text>
+</svg>

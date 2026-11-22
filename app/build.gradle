@@ -1,0 +1,145 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+def versionText = file('version.txt').text.trim()
+def versionMatch = java.util.regex.Pattern.compile('^(\\d+)\\.(\\d+)\\.(\\d+)(-[0-9A-Za-z.]+)?$').matcher(versionText)
+if (!versionMatch.matches()) {
+    throw new GradleException("app/version.txt must look like 1.2.3 or 1.2.3-rc1, found: ${versionText}")
+}
+// Same scheme as tools/version.py, the release workflow checks that both agree
+def computedVersionCode = versionMatch.group(1).toInteger() * 1_000_000 +
+        versionMatch.group(2).toInteger() * 1_000 + versionMatch.group(3).toInteger()
+
+// The relay list in the repository root becomes an asset of the app
+def relayAssets = layout.buildDirectory.dir('generated/relays')
+tasks.register('syncRelays', Copy) {
+    from(rootProject.file('relays.txt'))
+    into relayAssets
+}
+tasks.named('preBuild') { dependsOn 'syncRelays' }
+
+android {
+    namespace = 'com.kutlusoy.nearly'
+    compileSdk rootProject.ext.compileSdkVersion
+
+    sourceSets.main.assets.srcDir(relayAssets)
+
+    defaultConfig {
+        applicationId "com.kutlusoy.nearly"
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
+        versionCode computedVersionCode
+        versionName versionText
+        buildConfigField 'int', 'TEST_BUILD', (project.findProperty('testBuild') ?: '0').toString()
+        ndk { abiFilters += ['arm64-v8a', 'x86_64'] }
+    }
+
+    signingConfigs {
+        // Public test key of the repository, only used when the file exists
+        debug {
+            if (file('debug.keystore').exists()) {
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'nearly-debug'
+                keyPassword 'android'
+            }
+        }
+        release {
+            def propsFile = file('signing/release.properties')
+            if (propsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(propsFile))
+                storeFile file("signing/${props['storeFile']}")
+                storePassword props['storePassword']
+                keyAlias props['keyAlias']
+                keyPassword props['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (file('signing/release.properties').exists()) {
+                signingConfig = signingConfigs.release
+            }
+            debuggable = false
+        }
+
+        debug {
+            if (file('debug.keystore').exists()) {
+                signingConfig = signingConfigs.debug
+            }
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            debuggable = true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
+
+    // Robolectric needs the Android resources of the app for the photo tests
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            all {
+                // The screenshot tests write their pictures to app/build/screenshots
+                systemProperty 'roborazzi.test.record', 'true'
+            }
+        }
+    }
+
+    packaging {
+        // Tor and i2pd are executables that must be extracted to the native library directory to be started
+        jniLibs.useLegacyPackaging = true
+        resources {
+            excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1', 'META-INF/*.kotlin_module']
+        }
+    }
+}
+
+dependencies {
+    implementation platform('androidx.compose:compose-bom:2025.09.01')
+    implementation 'androidx.core:core-ktx:1.16.0'
+    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation 'androidx.core:core-splashscreen:1.0.1'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-core'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.9.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
+
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit:2.1.21'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation 'org.robolectric:robolectric:4.16'
+    testImplementation 'androidx.test:core:1.6.1'
+    testImplementation 'io.github.takahirom.roborazzi:roborazzi:1.59.0'
+    testImplementation 'io.github.takahirom.roborazzi:roborazzi-compose:1.59.0'
+    testImplementation platform('androidx.compose:compose-bom:2025.09.01')
+    testImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chats_empty_title">No chats yet</string>
+    <string name="chats_empty_help">Chats are private and end to end encrypted. Start one with the ID of another person, or share your ID so they can write to you.</string>
+    <string name="chats_start">Start a chat</string>
+    <string name="chats_new">New chat</string>
+    <string name="chats_my_id">Your ID</string>
+    <string name="chats_my_id_help">Share this ID. Anyone who has it can write to you.</string>
+    <string name="chats_share">Share</string>
+    <string name="chats_share_text">Write to me on Nearly: %1$s</string>
+    <string name="chats_you">You: %1$s</string>
+    <string name="chats_delete">Delete chat</string>
+
+    <string name="newchat_title">Start a chat</string>
+    <string name="newchat_label">ID of the person (npub)</string>
+    <string name="newchat_help">The person sends you the ID that starts with npub1. You find it under Settings, Back up your account.</string>
+    <string name="newchat_paste">Paste</string>
+    <string name="newchat_start">Start</string>
+    <string name="newchat_cancel">Cancel</string>
+    <string name="newchat_bad_id">This is not a valid ID. It starts with npub1.</string>
+    <string name="newchat_to_self">This is your own ID.</string>
+
+    <string name="conversation_input">Message</string>
+    <string name="conversation_send">Send</string>
+    <string name="conversation_empty">No messages yet. Say hello.</string>
+    <string name="conversation_encrypted">End to end encrypted. Only you and this person can read it.</string>
+    <string name="conversation_too_long">The message is too long.</string>
+    <string name="message_sending">Sending</string>
+    <string name="message_sent">Sent</string>
+    <string name="message_failed">Not sent. Tap to try again.</string>
+
+    <string name="network_online">Online, %1$d of %2$d relays</string>
+    <string name="network_connecting">Connecting to relays</string>
+    <string name="network_starting_tor">Starting Tor, %1$d %%</string>
+    <string name="network_tor_missing">Tor is not part of this build</string>
+    <string name="network_off">Offline</string>
+    <string name="network_banner_help">Messages wait on this phone and are sent as soon as the connection works.</string>
+    <string name="network_tor_missing_help">For a test you can use the direct connection in the settings. Relays then see your IP address.</string>
+    <string name="network_settings">Connection settings</string>
+
+    <string name="settings_connection">Connection</string>
+    <string name="connection_tor">Through Tor</string>
+    <string name="connection_tor_help">Recommended. Relays do not see your IP address.</string>
+    <string name="connection_direct">Direct</string>
+    <string name="connection_direct_help">For tests. Relays see your IP address and your approximate location.</string>
+
+    <string name="contact_message">Message</string>
+    <string name="contact_id">ID of this person</string>
+    <string name="contact_id_help">Public profile from the relays. With this ID anyone can write to this person.</string>
+    <string name="following_title">Following</string>
+    <string name="following_add_label">Follow with an ID (npub)</string>
+    <string name="following_add_help">Paste the ID of a person to follow and to write to.</string>
+    <string name="following_empty">You do not follow anyone yet. Follow a person with the ID, then you find the profile and the chat here.</string>
+    <string name="newchat_following">People you follow</string>
+
+    <plurals name="chats_requests">
+        <item quantity="one">%d hidden message from a person you do not follow</item>
+        <item quantity="other">%d hidden chats from people you do not follow</item>
+    </plurals>
+    <string name="requests_review">Review</string>
+    <string name="requests_title">Message requests</string>
+    <string name="requests_help">These people wrote to you but you do not follow them. Their messages stay hidden until you follow them. This keeps spam out.</string>
+    <string name="requests_empty">No message requests.</string>
+    <string name="requests_follow">Follow and show</string>
+    <string name="requests_delete">Delete</string>
+
+    <string name="settings_messages">Who can write to me</string>
+    <string name="policy_everyone">Everyone</string>
+    <string name="policy_everyone_help">Anyone who has your ID can send you a message.</string>
+    <string name="policy_followed">Only people I follow</string>
+    <string name="policy_followed_help">Messages of other people stay hidden as requests, so spam stays out. A person who answers your message is always shown.</string>
+</resources>
