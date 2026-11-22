@@ -6,7 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.kutlusoy.nearly.nostr.AccountExistsException
 import com.kutlusoy.nearly.nostr.BirthDate
 import com.kutlusoy.nearly.nostr.FileKeyStore
+import com.kutlusoy.nearly.nostr.AndroidKeystoreBox
 import com.kutlusoy.nearly.nostr.KeyVault
+import com.kutlusoy.nearly.nostr.NostrKeys
+import com.kutlusoy.nearly.nostr.SavedLogin
+import com.kutlusoy.nearly.nostr.SavedLoginStore
+import com.kutlusoy.nearly.nostr.SecretBox
 import com.kutlusoy.nearly.nostr.Session
 import com.kutlusoy.nearly.nostr.WrongPasswordException
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
@@ -22,13 +27,51 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class AppViewModel(app: Application) : AndroidViewModel(app) {
+class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = AndroidKeystoreBox()) : AndroidViewModel(app) {
+    private val saved = SavedLoginStore(File(app.noBackupFilesDir, "session.bin"), box)
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
     private var session: Session? = null
 
-    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), following = savedFollowing(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
+
+    init {
+        restore()
+    }
+
+    // The user stays signed in until the sign out: the sealed login of this phone opens the account again at the next start
+    private fun restore() {
+        val login = saved.load() ?: return
+        val key = login.secretKey
+        try {
+            val opened = Session(NostrKeys.publicKey(key), key.copyOf())
+            session = opened
+            _state.update { it.copy(screen = Screen.Main, account = AccountInfo(login.username, opened.npub, login.age), tab = Tab.Swipe) }
+        } finally {
+            key.fill(0)
+        }
+    }
+
+    private fun persist(username: String, email: String, words: String, opened: Session, age: Int?) {
+        opened.useSecretKey { key -> saved.save(SavedLogin(username.trim(), email.trim(), words.trim(), key.copyOf(), age)) }
+    }
+
+    // Read when the backup screen opens and kept only by that screen
+    fun backup(): AccountBackup? {
+        val opened = session?.takeIf { !it.isLocked } ?: return null
+        val login = saved.load()
+        val nsec = opened.useSecretKey { NostrKeys.nsec(it) }
+        return AccountBackup(
+            username = login?.username ?: prefs.getString(KEY_USERNAME, "").orEmpty(),
+            email = login?.email ?: prefs.getString(KEY_EMAIL, "").orEmpty(),
+            words = login?.words,
+            npub = opened.npub,
+            nsec = nsec,
+        )
+    }
+
+    fun openBackup(open: Boolean) = _state.update { it.copy(backupOpen = open) }
 
     fun today(): BirthDate = LocalDate.now().let { BirthDate(it.year, it.monthValue, it.dayOfMonth) }
 
@@ -63,6 +106,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             result.onSuccess { opened ->
                 session = opened
                 val age = birthDate.ageOn(today)
+                persist(form.username, form.email, form.words, opened, age)
                 prefs.edit().putString(KEY_USERNAME, form.username.trim()).putString(KEY_EMAIL, form.email.trim()).putInt(KEY_AGE, age).apply()
                 _state.update { it.copy(busy = false, screen = Screen.Main, account = AccountInfo(form.username.trim(), opened.npub, age), tab = Tab.Profile) }
             }.onFailure { failure -> _state.update { it.copy(busy = false, error = if (failure is AccountExistsException) AppError.AccountExists else AppError.Generic) } }
@@ -80,14 +124,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val sameAccount = prefs.getString(KEY_USERNAME, null).equals(form.username.trim(), true)
                 val age = if (sameAccount && prefs.contains(KEY_AGE)) prefs.getInt(KEY_AGE, 0) else null
                 prefs.edit().putString(KEY_USERNAME, form.username.trim()).putString(KEY_EMAIL, form.email.trim()).apply()
+                persist(form.username, form.email, form.words, opened, age)
                 _state.update { it.copy(busy = false, screen = Screen.Main, account = AccountInfo(form.username.trim(), opened.npub, age), tab = Tab.Swipe) }
             }.onFailure { failure -> _state.update { it.copy(busy = false, error = if (failure is WrongPasswordException) AppError.SignInFailed else AppError.Generic) } }
         }
     }
 
-    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false) }
+    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false) }
 
     fun openSettings(open: Boolean) = _state.update { it.copy(settingsOpen = open) }
+
+    fun openEditProfile(open: Boolean) = _state.update { it.copy(editProfileOpen = open) }
+
+    fun updateProfile(profile: MyProfile) {
+        MyProfile.save(prefs, profile)
+        _state.update { it.copy(profile = profile) }
+    }
+
+    fun toggleFollow(id: String) {
+        val next = _state.value.following.let { if (id in it) it - id else it + id }
+        prefs.edit().putString(KEY_FOLLOWING, next.joinToString(",")).apply()
+        _state.update { it.copy(following = next) }
+    }
+
+    private fun savedFollowing(): Set<String> = (prefs.getString(KEY_FOLLOWING, "") ?: "").split(',').filter { it.isNotBlank() }.toSet()
+
+    fun openDiscovery(open: Boolean) = _state.update { it.copy(discoveryOpen = open) }
+
+    fun updateDiscovery(filter: DiscoveryFilter) {
+        DiscoveryFilter.save(prefs, filter)
+        _state.update { it.copy(discovery = filter) }
+    }
 
     fun setTheme(mode: ThemeMode) {
         prefs.edit().putString(KEY_THEME, mode.name).apply()
@@ -97,9 +164,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun savedTheme(): ThemeMode = ThemeMode.values().firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.Light
 
     fun signOut() {
+        saved.clear()
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {
@@ -111,5 +179,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         const val KEY_EMAIL = "email"
         const val KEY_AGE = "age"
         const val KEY_THEME = "theme"
+        const val KEY_FOLLOWING = "following"
     }
 }
