@@ -1,10 +1,10 @@
 # Nearly: Product Concept
 
-- **Version:** 0.5 (draft)
-- **Date:** November 21, 2026
+- **Version:** 0.6 (draft)
+- **Date:** November 22, 2026
 - **Audience:** Product, design and Android developers of Nearly
-- **Reference implementation:** network layer `app/src/main/java/com/kutlusoy/nearly/network/`, account, keys, chat `app/src/main/java/com/kutlusoy/nearly/nostr/`. The product features below are not built yet.
-- **See also:** [`guideline-decisions.md`](./guideline-decisions.md) (applies first where it differs), [`guideline-local-ai.md`](./guideline-local-ai.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`permissionlesstech/bitchat`](https://github.com/permissionlesstech/bitchat) (geohash presence), [`kutlusoy/bitnet`](https://github.com/kutlusoy/bitnet) (local AI), [`kutlusoy/models`](https://github.com/kutlusoy/models) (model packs)
+- **Reference implementation:** network layer `app/src/main/java/com/kutlusoy/nearly/network/`, account, keys, chat `app/src/main/java/com/kutlusoy/nearly/nostr/`. Built so far: chat, message requests, block, profile editing, swipe and feed on real people of the area. Not built yet: map and presence, posts and stories, photo upload in the screens, interest signal and match, local AI.
+- **See also:** [`guideline-decisions.md`](./guideline-decisions.md) (applies first where it differs), the detailed guidelines of section 12, [`guideline-local-ai.md`](./guideline-local-ai.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`permissionlesstech/bitchat`](https://github.com/permissionlesstech/bitchat) (geohash presence), [`kutlusoy/bitnet`](https://github.com/kutlusoy/bitnet) (local AI), [`kutlusoy/models`](https://github.com/kutlusoy/models) (model packs)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional. Nostr event kinds follow the NIPs and the BitChat documentation as known when this draft was written and MUST be checked against the current texts before implementation.
 
@@ -82,8 +82,8 @@ Bottom bar: **Swipe**, **Map**, **Feed**, **Chats**, **Profile**, plus a floatin
 - Cards of people with a photo carousel, name, age, distance class and the latest post.
 - Right swipe = interest, left swipe = "not now" (comes back later), up = skip (no signal). Follow is a separate button.
 - Everyone who matches the filters appears here, active or not.
-- Interest is private. It is sent as an encrypted NIP-17 message and becomes visible only on mutual interest, which opens the chat.
-- Users can set "visible to followers only".
+- Interest is private. It is sent as an encrypted message of its own kind (NIP-17 and NIP-59 wrapping) and becomes visible only on mutual interest, which opens the chat. Details in the swipe guideline.
+- Users can switch their card on and off. "Visible to followers only" needs an encrypted card per follower and is open, see the swipe guideline.
 
 ### 6.2 Map mode
 
@@ -156,7 +156,7 @@ All relay traffic and all downloads run through Tor as in `guideline-tor-and-i2p
 
 | Version | Content |
 |---|---|
-| 0.0.x | skeleton, network layer, keys and account, Nostr events and relay client with reconnect, encrypted chat primitives (done) |
+| 0.0.x | skeleton, network layer, keys and account, Nostr events and relay client with reconnect, encrypted chat with message requests and block, stay signed in, profile editing, swipe and feed on real people of the area (done, tested with a relay in memory) |
 | 0.1 | profile, text and photo posts, follows, screens for registration and sign in, English and German interface |
 | 0.2 | swipe mode with private interest signal, chat screens |
 | 0.3 | map mode with geohash presence |
@@ -164,7 +164,24 @@ All relay traffic and all downloads run through Tor as in `guideline-tor-and-i2p
 | 0.5 | local AI: base pack and translation first (first language set), then reply suggestions and filters |
 | 1.0 | age gate, report and block, store release |
 
-## 12. Open Questions
+## 12. Detailed guidelines
+
+| Area | Guideline |
+|---|---|
+| Swipe, filters, discovery card, interest and match | [`guideline-discovery-swipe.md`](./guideline-discovery-swipe.md) |
+| Map and presence | [`guideline-map-presence.md`](./guideline-map-presence.md) |
+| Feed, posts, stories | [`guideline-feed-stories.md`](./guideline-feed-stories.md), [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-photo-upload.md`](./guideline-photo-upload.md) |
+| Profile and account | [`guideline-profile-details.md`](./guideline-profile-details.md), [`guideline-stay-signed-in.md`](./guideline-stay-signed-in.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md) |
+| Chat | [`guideline-chat.md`](./guideline-chat.md) |
+| Safety and moderation | [`guideline-safety-moderation.md`](./guideline-safety-moderation.md) |
+| Notifications and background | [`guideline-notifications-background.md`](./guideline-notifications-background.md) |
+| Network | [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md) |
+| Local AI | [`guideline-local-ai.md`](./guideline-local-ai.md) |
+| Store and release | [`guideline-google-play.md`](./guideline-google-play.md), [`guideline-release-signing.md`](./guideline-release-signing.md), [`guideline-splash-and-icons.md`](./guideline-splash-and-icons.md) |
+
+Where a detailed guideline differs from this concept, the detailed guideline applies, after the decision record.
+
+## 13. Open Questions
 
 1. Blob server for expiring private photos over Tor, and does the project run its own?
 2. Age as an exact number or a range in the profile?
