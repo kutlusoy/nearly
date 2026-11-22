@@ -46,8 +46,6 @@ import androidx.compose.ui.unit.sp
 import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.ui.theme.NearlyColors
 
-private const val PHOTOS = 3
-
 // The whole profile, opened from the card before anyone decides: photos, about, what the person looks for, interests
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -56,16 +54,16 @@ fun PersonDetail(person: Person, onClose: () -> Unit, onAction: (SwipeDirection)
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                val pager = rememberPagerState(pageCount = { PHOTOS })
+                val pager = rememberPagerState(pageCount = { person.photos })
                 Box(Modifier.fillMaxWidth().aspectRatio(0.85f).testTag("photos")) {
                     HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
-                        val (from, to) = if (page % 2 == 0) person.from to person.to else person.to to person.from
+                        val (from, to) = person.photoColors(page)
                         Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(from, to))), contentAlignment = Alignment.Center) {
                             Text(person.name.take(1), fontSize = 160.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.35f))
                         }
                     }
                     Row(Modifier.align(Alignment.TopCenter).padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        repeat(PHOTOS) { i ->
+                        repeat(person.photos) { i ->
                             Box(
                                 Modifier.size(width = 36.dp, height = 4.dp)
                                     .background(Color.White.copy(alpha = if (i == pager.currentPage) 0.95f else 0.4f), CircleShape),
@@ -102,6 +100,9 @@ fun PersonDetail(person: Person, onClose: () -> Unit, onAction: (SwipeDirection)
                     Section(R.string.detail_about)
                     Text(person.bio, style = MaterialTheme.typography.bodyLarge)
                     Text(stringResource(person.gender.singular()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    person.job?.let { Text(stringResource(R.string.detail_job, it), style = MaterialTheme.typography.bodyMedium) }
+                    person.city?.let { Text(stringResource(R.string.detail_lives_in, it), style = MaterialTheme.typography.bodyMedium) }
+                    if (person.languages.isNotEmpty()) Text(stringResource(R.string.detail_speaks, person.languages.joinToString(", ")), style = MaterialTheme.typography.bodyMedium)
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     Section(R.string.detail_interests)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
