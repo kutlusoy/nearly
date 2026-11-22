@@ -98,6 +98,7 @@ fun MainScreen(
     onOpenFollowing: () -> Unit = {},
     onFollowRequest: (String) -> Unit = {},
     onDeleteRequest: (String) -> Unit = {},
+    onBlockRequest: (String) -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -131,7 +132,7 @@ fun MainScreen(
                 Tab.Swipe -> SwipeScreen(filter = discovery, onFilters = onFilters)
                 Tab.Feed -> FeedScreen(following = following, onFollow = onFollow)
                 Tab.Profile -> ProfileTab(account, profile, following.size + chat.following.size, onSettings, onEditProfile, onOpenFollowing)
-                Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings, onFollowRequest = onFollowRequest, onDeleteRequest = onDeleteRequest)
+                Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings, onFollowRequest = onFollowRequest, onDeleteRequest = onDeleteRequest, onBlockRequest = onBlockRequest)
                 else -> SoonTab(tab)
             }
         }
