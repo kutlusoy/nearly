@@ -1,9 +1,9 @@
 # Nearly: Discovery and Swipe Guideline
 
-- **Version:** 0.1 (draft)
+- **Version:** 0.2 (draft)
 - **Date:** November 22, 2026
 - **Audience:** Product, design and Android developers of Nearly
-- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/ui/` (`SwipeScreen.kt`, `PersonDetail.kt`, `DiscoveryScreen.kt`, `DiscoveryFilter.kt`, `SamplePeople.kt`), chat side in `chat/`. The cards still come from sample data, the network part below is not built yet.
+- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/nostr/` (`DiscoveryCard.kt`, `Geohash.kt`), `discovery/` (`NearbyController.kt`, `AndroidAreaSource.kt`), `ui/` (`SwipeScreen.kt`, `PersonDetail.kt`, `FeedScreen.kt`, `DiscoveryFilter.kt`), tests `DiscoveryCardTest.kt` and `NearbyTest.kt`. The decisions, the interest signal and the match are not built yet.
 - **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) section 6.1, [`guideline-decisions.md`](./guideline-decisions.md), [`guideline-profile-details.md`](./guideline-profile-details.md), [`guideline-map-presence.md`](./guideline-map-presence.md), [`guideline-chat.md`](./guideline-chat.md), [`guideline-safety-moderation.md`](./guideline-safety-moderation.md), [NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md), [NIP-40](https://github.com/nostr-protocol/nips/blob/master/40.md), [NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional. Event kinds and NIP numbers are written as the author knew them and MUST be checked against the current NIP texts before implementation.
@@ -14,7 +14,7 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 The swipe mode shows one person at a time, as Tinder does. This guideline covers where the people come from, how the deck is built, what a swipe does, how a match comes about without a server, and which settings exist.
 
-Built: the screens, the filter with its rules, the profile view with a photo carousel, all on sample people. Missing: real people from the relays, stored decisions, the interest signal and the match.
+Built: the screens, the filter with its rules, the profile view with a photo carousel, the discovery card (publish, hide, read by cell, checks), the approximate place from the phone (permission prompt), the deck from real people of the area, follow and message from the full view, and `People near you` in the feed. The swipe still shows a gradient in place of photos, because the photo upload has no screen yet, so a card needs no photo for now. Missing: stored decisions, the interest signal and the match, the lifestyle fields in the card.
 
 ## 2. The discovery card
 
@@ -31,8 +31,8 @@ Rules:
 - **Coarse place (MUST).** The cell of a card has five characters (about 5 km by 5 km). A card stays on relays for days, so it is coarser than the presence cell on the map (about 1 km, short lived). The exact position never leaves the device.
 - **Distance on the device (MUST).** The distance is computed between the cell centres and shown as a class: `in your area`, up to 5, 10, 25, 50, 100 km, `more than 100 km`. A user who switches off `show distance` hides the class on the own card.
 - **Refresh (MUST).** The card is published at registration, after every change of the profile and at least every 7 days while the app is used. The expiration makes stale cards disappear.
-- **Hide (MUST).** `visible = off` replaces the card with an empty card of the same `d` tag (no `g`, no content) and sends a deletion request (kind 5, NIP-09). Relays that ignore both keep an old card until it expires, the settings say so.
-- **Foreign cards are checked (MUST).** Dropped: age outside 18 to 99, no valid photo URL (`https`), more than 6 photos, unknown enum values, text over the limits, control characters, a card whose `t` or `d` tag does not fit. The newest card of a key wins (lowest id as the tie breaker, as in `Replaceable.newest`). A card without a kind 0 profile is shown with the name from the card, or dropped if there is none.
+- **Hide (MUST).** `visible = off` replaces the card with an empty card of the same `d` tag and the same `g` tags (no content). The `g` tags are needed: a reader that watches the area filters by them and would never see a hide event without them. A deletion request (kind 5, NIP-09) may follow. Relays that ignore replacements keep an old card until it expires, the settings say so. A newer time than the card it replaces is required, also within the same second.
+- **Foreign cards are checked (MUST).** Dropped: age outside 18 to 99, no valid photo URL (`https`), more than 6 photos, unknown enum values, text over the limits, control characters, a card whose `t` or `d` tag does not fit. The newest event of a key wins, a hide event counts like a card (lowest id as the tie breaker, as in `Replaceable.newest`). A card without a kind 0 profile is shown with the name from the card, or dropped if there is none.
 - **Followers only.** Decision 6 asks for `visible to followers only`. A public card cannot do that. Version 1 offers only on and off. A real followers only mode needs a card encrypted per follower and is an open question.
 
 ## 3. Finding people
@@ -82,16 +82,18 @@ Built in `DiscoveryFilter`: show me (women, men, non binary people, at least one
 
 ## 8. Tests
 
-To write: card encode and parse with bad data, the 30 day expiry, the 9 cell cover for each radius, deck order and the decision rules with a fake clock, undo before the signal leaves, match from both directions on two fake phones through one fake relay, `likes_me` never reaching the screen, rate limit, hiding replacing the card.
+Built: card encode and parse with bad data, expiry and cell rules, the nine cell cover, the service with a fake relay including hiding and another area, two phones finding each other through one fake relay, the profile fields in the card, hide and block removing a person, the swipe, follow and message with a real person, the permission prompt, and the feed row. To write: deck order and decision rules with a fake clock, undo before the signal leaves, match from both directions, `likes_me` never reaching the screen, rate limit.
 
 ## 9. Checklist
 
-- [x] Screens, filter and deck rules on sample people
-- [ ] Card event, publish and refresh
-- [ ] Query by cells, cache, defensive parsing
+- [x] Screens, filter and deck rules
+- [x] Card event, publish, hide and refresh at every profile change (the weekly refresh is still to do)
+- [x] Query by cells, defensive parsing (the local cache is still to do)
+- [x] Real people in swipe and in `People near you`, follow and message
 - [ ] Stored decisions, undo, return times
 - [ ] Interest signal and match, chat opens
 - [ ] Report and block from the full view
+- [ ] Photos in the card
 
 ## 10. Open Questions
 

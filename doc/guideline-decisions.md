@@ -1,7 +1,7 @@
 # Nearly: Decision Record
 
-- **Version:** 0.6 (draft)
-- **Date:** November 21, 2026
+- **Version:** 0.7 (draft)
+- **Date:** November 22, 2026
 - **Audience:** All contributors
 - **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md), [`guideline-local-ai.md`](./guideline-local-ai.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
 
@@ -39,6 +39,11 @@ This record holds the decisions of the product owner. Where it differs from an o
 | 24 | Languages | Other European languages as well, for the **interface and for the AI translation**. First set as a proposal: German, English, French, Spanish, Italian, Portuguese, Dutch, Polish, Turkish. |
 | 25 | Model size and delivery | Models are small. A small base pack is part of the build, all other packs are downloaded from the repository. Supersedes the rule of the product concept that no model is part of the app. Downloads use HTTPS only (not plain HTTP), are checked against a signed manifest and checksums, and go through Tor by default. |
 | 26 | Where the models live | In a separate repository, **`kutlusoy/models`**, with one folder per app (`nearly/` for this app), so the owner can use it for other apps too. Supersedes the earlier decision for a `models/` folder in the app repository. The manifest and the signature are in the git tree, the model files are release assets (tags `nearly-v<version>`), because the git tree rejects files above 100 MB and keeps every binary in the history. The manifest is signed with an offline Ed25519 key and carries a growing `sequence` number. Details in `guideline-local-ai.md`. |
+| 27 | Who can write | The default is `Only people I follow`. Messages of other people stay hidden as requests that can be followed, deleted or blocked. An answer to an own message and a match are always shown. The user can switch to `Everyone`. Reason: a bot wrote to the first test account within minutes. |
+| 28 | Blocking | Block works on the phone: deletes the chat, drops later messages on arrival, list with unblock in the settings. Reporting to the relays is a separate step with explicit consent. The block list becomes an encrypted mute list (NIP-51) later. |
+| 29 | Discovery card | People are found through an addressable card (kind 30078, `d` = `nearly.card`) with a place of about 5 km (geohash, 5 characters), expiring after 30 days. Presence on the map stays at about 1 km and short lived. Supersedes the 1 km default of decision 5 for the swipe card only. |
+| 30 | Visibility | Version 1 has on and off for the card. `Followers only` (decision 6) needs a card encrypted per follower and moves to a later version. |
+| 31 | Background delivery | Proposal: version 0.1 works while the app is open, 0.2 adds an opt in foreground service, UnifiedPush later. No push server of the project. To be confirmed by the product owner. |
 
 ## 2. Consequences
 
