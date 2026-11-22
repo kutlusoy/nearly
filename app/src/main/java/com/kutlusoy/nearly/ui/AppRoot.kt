@@ -133,6 +133,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onFollowRequest = viewModel::followRequest,
                         onDeleteRequest = viewModel::deleteRequest,
                         onBlockRequest = viewModel::block,
+                        nearby = state.nearby,
+                        onAllowLocation = viewModel::refreshArea,
+                        onFollowKey = viewModel::toggleFollowKey,
+                        onMessageKey = viewModel::messagePerson,
                     )
                 }
             }

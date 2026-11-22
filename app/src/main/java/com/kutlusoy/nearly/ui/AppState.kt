@@ -2,6 +2,7 @@ package com.kutlusoy.nearly.ui
 
 import com.kutlusoy.nearly.chat.ChatUiState
 import com.kutlusoy.nearly.chat.MessagePolicy
+import com.kutlusoy.nearly.discovery.NearbyState
 import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.theme.ThemeMode
@@ -29,6 +30,7 @@ data class AppState(
     val followingOpen: Boolean = false,
     val blockedOpen: Boolean = false,
     val chat: ChatUiState = ChatUiState(),
+    val nearby: NearbyState = NearbyState(),
     val networkMode: NetworkMode = NetworkMode.Tor,
     val messagePolicy: MessagePolicy = MessagePolicy.FollowedOnly,
     val profile: MyProfile = MyProfile(),

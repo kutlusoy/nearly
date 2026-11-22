@@ -7,6 +7,9 @@ import com.kutlusoy.nearly.chat.ChatController
 import com.kutlusoy.nearly.chat.ChatStore
 import com.kutlusoy.nearly.chat.MessagePolicy
 import com.kutlusoy.nearly.chat.SqliteChatStore
+import com.kutlusoy.nearly.discovery.AndroidAreaSource
+import com.kutlusoy.nearly.discovery.AreaSource
+import com.kutlusoy.nearly.discovery.NearbyController
 import com.kutlusoy.nearly.network.NetworkLink
 import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.network.RelayHub
@@ -38,9 +41,11 @@ class AppViewModel @JvmOverloads constructor(
     app: Application,
     box: SecretBox = AndroidKeystoreBox(),
     link: NetworkLink = RelayHub(app),
+    area: AreaSource = AndroidAreaSource(app),
     chatStoreFor: (String) -> ChatStore = { SqliteChatStore(app, it) },
 ) : AndroidViewModel(app) {
     private val chat = ChatController(link, chatStoreFor, viewModelScope)
+    private val nearby = NearbyController(link, area)
     private val saved = SavedLoginStore(File(app.noBackupFilesDir, "session.bin"), box)
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
@@ -50,7 +55,13 @@ class AppViewModel @JvmOverloads constructor(
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch { chat.state.collect { c -> _state.update { it.copy(chat = c) } } }
+        viewModelScope.launch {
+            chat.state.collect { c ->
+                _state.update { it.copy(chat = c) }
+                nearby.setBlocked(c.blocked.map { b -> b.peer }.toSet())
+            }
+        }
+        viewModelScope.launch { nearby.state.collect { n -> _state.update { it.copy(nearby = n) } } }
         restore()
     }
 
@@ -84,7 +95,35 @@ class AppViewModel @JvmOverloads constructor(
     private fun openChat(opened: Session, username: String, age: Int?) {
         chat.setPolicy(_state.value.messagePolicy)
         chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode)
+        nearby.open(opened)
+        nearby.setRadius(radius(_state.value.discovery))
+        publishCard()
     }
+
+    private fun radius(filter: DiscoveryFilter) = if (filter.furtherAway) filter.maxDistanceKm * 2 else filter.maxDistanceKm
+
+    // The own card for swipe and feed: written again after every change of the profile or of the visibility
+    private fun publishCard() {
+        val s = _state.value
+        val account = s.account ?: return
+        val p = s.profile
+        nearby.publish(
+            NearbyController.CardSnapshot(
+                name = account.username, age = account.age, gender = p.gender, looking = p.lookingFor,
+                languages = p.languages.mapNotNull { NearbyController.languageCode(it) }, job = p.job, city = p.city,
+                about = p.about, interests = p.interests, visible = s.discovery.visible,
+            ),
+        )
+    }
+
+    fun refreshArea() = nearby.refreshArea()
+
+    fun toggleFollowKey(key: String) {
+        val followed = _state.value.chat.following.any { it.peer == key }
+        chat.setFollowed(key, !followed)
+    }
+
+    fun messagePerson(key: String) = chat.openConversation(key)
 
     fun startChat(input: String) {
         val own = _state.value.account?.npub?.let { runCatching { NostrKeys.toHex(NostrKeys.decodeNpub(it)) }.getOrNull() } ?: return
@@ -215,7 +254,10 @@ class AppViewModel @JvmOverloads constructor(
         }
     }
 
-    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false) }
+    fun selectTab(tab: Tab) {
+        _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false) }
+        if (tab == Tab.Swipe || tab == Tab.Feed) nearby.refreshArea()
+    }
 
     fun openSettings(open: Boolean) = _state.update { it.copy(settingsOpen = open) }
 
@@ -224,6 +266,7 @@ class AppViewModel @JvmOverloads constructor(
     fun updateProfile(profile: MyProfile) {
         MyProfile.save(prefs, profile)
         _state.update { it.copy(profile = profile) }
+        publishCard()
     }
 
     fun toggleFollow(id: String) {
@@ -238,7 +281,10 @@ class AppViewModel @JvmOverloads constructor(
 
     fun updateDiscovery(filter: DiscoveryFilter) {
         DiscoveryFilter.save(prefs, filter)
+        val visibleChanged = _state.value.discovery.visible != filter.visible
         _state.update { it.copy(discovery = filter) }
+        nearby.setRadius(radius(filter))
+        if (visibleChanged) publishCard()
     }
 
     fun setTheme(mode: ThemeMode) {
@@ -250,6 +296,7 @@ class AppViewModel @JvmOverloads constructor(
 
     fun signOut() {
         chat.close()
+        nearby.close()
         saved.clear()
         session?.lock()
         session = null
@@ -258,6 +305,7 @@ class AppViewModel @JvmOverloads constructor(
 
     override fun onCleared() {
         chat.close()
+        nearby.close()
         session?.lock()
     }
 
