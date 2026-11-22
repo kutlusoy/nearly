@@ -57,6 +57,7 @@ fun ConversationScreen(
     onRetry: (String) -> Unit,
     onBack: () -> Unit,
     now: Long = System.currentTimeMillis() / 1000,
+    onProfile: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     var text by remember { mutableStateOf("") }
@@ -70,8 +71,10 @@ fun ConversationScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                 }
-                Avatar(name, size = 40)
-                Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
+                Row(Modifier.weight(1f).clickable(onClick = onProfile).testTag("conversation-header"), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(name, size = 40)
+                    Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
+                }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             if (messages.isEmpty()) {

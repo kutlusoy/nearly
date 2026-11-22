@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.chat.ChatError
 import com.kutlusoy.nearly.chat.ChatUiState
+import com.kutlusoy.nearly.chat.ContactUi
 import com.kutlusoy.nearly.chat.ConversationUi
 import com.kutlusoy.nearly.network.LinkState
 import com.kutlusoy.nearly.network.NetworkStatus
@@ -74,6 +75,8 @@ fun ChatsScreen(
     if (dialog) {
         NewChatScreen(
             error = chat.error,
+            following = chat.following,
+            onOpenContact = onOpen,
             onStart = onStart,
             onBack = {
                 dialog = false
@@ -207,7 +210,7 @@ private fun ConversationRow(item: ConversationUi, now: Long, onClick: () -> Unit
 }
 
 @Composable
-private fun NewChatScreen(error: ChatError?, onStart: (String) -> Unit, onBack: () -> Unit) {
+private fun NewChatScreen(error: ChatError?, following: List<ContactUi>, onOpenContact: (String) -> Unit, onStart: (String) -> Unit, onBack: () -> Unit) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     var text by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -238,6 +241,18 @@ private fun NewChatScreen(error: ChatError?, onStart: (String) -> Unit, onBack: 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { clipboardText(context)?.let { text = it.trim().take(200) } }) { Text(stringResource(R.string.newchat_paste)) }
                 Button(onClick = { onStart(text) }, enabled = text.isNotBlank(), modifier = Modifier.testTag("newchat-start")) { Text(stringResource(R.string.newchat_start)) }
+            }
+        }
+        if (following.isNotEmpty()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            Text(
+                stringResource(R.string.newchat_following),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+            )
+            LazyColumn(Modifier.weight(1f)) {
+                items(following, key = { it.peer }) { contact -> ContactRow(contact) { onOpenContact(contact.peer) } }
             }
         }
     }

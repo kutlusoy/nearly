@@ -1,5 +1,6 @@
 package com.kutlusoy.nearly.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -93,6 +95,7 @@ fun MainScreen(
     onStartChat: (String) -> Unit = {},
     onClearChatError: () -> Unit = {},
     onNetworkSettings: () -> Unit = {},
+    onOpenFollowing: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -125,7 +128,7 @@ fun MainScreen(
             when (tab) {
                 Tab.Swipe -> SwipeScreen(filter = discovery, onFilters = onFilters)
                 Tab.Feed -> FeedScreen(following = following, onFollow = onFollow)
-                Tab.Profile -> ProfileTab(account, profile, following.size, onSettings, onEditProfile)
+                Tab.Profile -> ProfileTab(account, profile, following.size + chat.following.size, onSettings, onEditProfile, onOpenFollowing)
                 Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings)
                 else -> SoonTab(tab)
             }
@@ -159,7 +162,7 @@ private fun SoonTab(tab: Tab) {
 // Built like the profile of Instagram: name and settings on top, picture and numbers, then the grid of photos
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount: Int, onSettings: () -> Unit, onEditProfile: () -> Unit) {
+private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount: Int, onSettings: () -> Unit, onEditProfile: () -> Unit, onOpenFollowing: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp).height(48.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(account.username, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -173,7 +176,7 @@ private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount:
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Stat(0, R.string.profile_posts)
                 Stat(0, R.string.profile_followers)
-                Stat(followingCount, R.string.profile_following)
+                Stat(followingCount, R.string.profile_following, Modifier.clickable(onClick = onOpenFollowing).testTag("following-stat"))
             }
         }
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -217,8 +220,8 @@ private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount:
 }
 
 @Composable
-private fun Stat(value: Int, label: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun Stat(value: Int, label: Int, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(stringResource(label), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
