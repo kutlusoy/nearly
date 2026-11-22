@@ -33,13 +33,19 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 ### Who can write
 
-- Setting `Who can write to me`: Everyone (default) or Only people I follow.
-- With the second choice, messages of people the user does not follow are kept but hidden. The chat list shows a row with the number of hidden chats, the screen behind it offers `Follow and show` and `Delete`.
+- Setting `Who can write to me`: Only people I follow (default) or Everyone. The default keeps the spam of bots out, who write to every new public key.
+- With the first choice, messages of people the user does not follow are kept but hidden. The chat list shows a row with the number of hidden chats, the screen behind it offers `Follow and show`, `Delete` and `Block`.
 - A person who answers a message of the user is always shown. Hidden messages do not count as unread.
+
+### Blocking
+
+- A person can be blocked from the message requests and from the profile page (with a confirmation). Blocking deletes the chat, removes the follow and drops every later message of the person when it arrives, before it is stored.
+- The settings list the blocked people with Unblock. Following a blocked person lifts the block. A chat with a blocked person cannot be started.
+- The block is kept on the phone only. Reporting a person to the relays (NIP-56) is not part of this version.
 
 ## 4. Storage
 
-- One SQLite database per account on the phone (`chat-<first 16 hex of the key>.db`), tables `messages`, `wraps`, `peers`, `meta`. Messages are not encrypted in the database, the app storage is private to the app and excluded from backups.
+- One SQLite database per account on the phone (`chat-<first 16 hex of the key>.db`), tables `messages`, `wraps`, `peers`, `followed`, `blocked`, `meta`. Messages are not encrypted in the database, the app storage is private to the app and excluded from backups.
 - Signing out keeps the database. Deleting a conversation is possible in the store (`deleteConversation`), a screen for it is still to do.
 
 ## 5. Network
@@ -53,14 +59,17 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 - At most 2000 characters per message sent, 5000 accepted.
 - No attachments, no photos, no reactions, no read receipts in this version. Private photos between two people follow the photo guideline.
+- Links in messages are shown as text and cannot be tapped.
 
 ## 7. Checklist
 
 - [x] Messages go both ways in tests with the real wrap and unwrap code and a relay in memory
 - [x] History comes back on a new device, duplicates are read once, broken events are ignored
+- [x] A message from a real relay arrived on a phone (Primal to Nearly)
 - [ ] Tested on two phones against real relays through Tor and directly
 - [ ] Public relays of `relays.txt` checked (reachable, accept kind 1059 and kind 0)
-- [ ] Block and report a person
+- [x] Block a person (local)
+- [ ] Report a person to the relays
 - [ ] Delete a conversation from the screen
 - [ ] Notifications and background delivery
 
@@ -68,4 +77,4 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 1. Which relays accept gift wraps from unknown keys without payment or proof of work?
 2. How does a person without a friend find the first chat partner before the swipe and the map show real people?
-3. Should the default become Only people I follow once real profiles are found on the map?
+3. Should blocks be published as an encrypted mute list (NIP-51) so they follow the account to a new phone?
