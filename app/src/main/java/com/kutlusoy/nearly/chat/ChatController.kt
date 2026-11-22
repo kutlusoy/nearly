@@ -51,7 +51,7 @@ class ChatController(
     private var statusJob: Job? = null
     private var policy = MessagePolicy.FollowedOnly
 
-    fun open(session: Session, name: String, about: String, age: Int?, mode: NetworkMode) {
+    fun open(session: Session, name: String, about: String, age: Int?, mode: NetworkMode, picture: String? = null) {
         close()
         val key = NostrKeys.toHex(session.publicKey).take(16)
         val chatStore = storeFor(key)
@@ -65,7 +65,7 @@ class ChatController(
         service = chat
         statusJob = scope.launch { link.status.collect { s -> _state.update { it.copy(network = s) } } }
         link.start(mode)
-        chat.publishProfile(name, about, age)
+        chat.publishProfile(name, about, age, picture)
         chat.start()
         refresh()
         (conversationsWithoutName() + chatStore.followed()).distinct().forEach { chat.resolveProfile(it) }
@@ -79,6 +79,11 @@ class ChatController(
         statusJob = null
         link.stop()
         _state.value = ChatUiState()
+    }
+
+    // The public profile (kind 0) again, after a change of the text or of the first photo
+    fun publishProfile(name: String, about: String, age: Int?, picture: String?) {
+        service?.publishProfile(name, about, age, picture)
     }
 
     fun setMode(mode: NetworkMode) {

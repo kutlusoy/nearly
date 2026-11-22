@@ -52,6 +52,7 @@ class FakeRelay(var answers: Int = 1, var accept: Boolean = true) : NostrTranspo
 class FakeLink(override val transport: NostrTransport) : NetworkLink {
     private val _status = MutableStateFlow(NetworkStatus())
     override val status: StateFlow<NetworkStatus> = _status
+    override val router = com.kutlusoy.nearly.network.RelayRouter({ com.kutlusoy.nearly.network.NetworkSettings(NetworkMode.Direct) }, { com.kutlusoy.nearly.network.NetworkPorts() })
     var startedWith: NetworkMode? = null
     var stops = 0
 

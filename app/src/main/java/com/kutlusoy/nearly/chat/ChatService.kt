@@ -87,9 +87,9 @@ class ChatService(
         }
     }
 
-    fun publishProfile(name: String, about: String, age: Int?) {
+    fun publishProfile(name: String, about: String, age: Int?, picture: String? = null) {
         if (name.isBlank()) return
-        ProfileService(transport, session).publish(com.kutlusoy.nearly.nostr.ProfileData(name = name.take(com.kutlusoy.nearly.nostr.ProfileData.MAX_NAME), about = about.take(com.kutlusoy.nearly.nostr.ProfileData.MAX_ABOUT), age = age))
+        ProfileService(transport, session).publish(com.kutlusoy.nearly.nostr.ProfileData(name = name.take(com.kutlusoy.nearly.nostr.ProfileData.MAX_NAME), about = about.take(com.kutlusoy.nearly.nostr.ProfileData.MAX_ABOUT), age = age, picture = picture?.takeIf { it.startsWith("https://") && it.length <= 500 }))
     }
 
     private fun result(id: String, accepted: Boolean, reply: String) {
