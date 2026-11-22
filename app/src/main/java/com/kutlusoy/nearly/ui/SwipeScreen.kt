@@ -213,6 +213,7 @@ private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: F
             .clip(RoundedCornerShape(24.dp))
             .background(Brush.linearGradient(listOf(from, to))),
     ) {
+        person.photoRefs.getOrNull(photo)?.let { RemotePhoto(it, Modifier.fillMaxSize()) }
         if (person.photos > 1) {
             val description = stringResource(R.string.detail_photo, photo + 1, person.photos)
             Row(
@@ -228,13 +229,15 @@ private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: F
                 }
             }
         }
-        Text(
-            person.name.take(1),
-            modifier = Modifier.align(Alignment.Center),
-            fontSize = 180.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White.copy(alpha = 0.35f),
-        )
+        if (person.photoRefs.isEmpty()) {
+            Text(
+                person.name.take(1),
+                modifier = Modifier.align(Alignment.Center),
+                fontSize = 180.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.35f),
+            )
+        }
         Box(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(220.dp)
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)))),
