@@ -46,7 +46,16 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 onSubmit = viewModel::submitSignIn,
             )
             Screen.Main -> state.account?.let { account ->
-                if (state.discoveryOpen) {
+                if (state.chat.openPeer != null) {
+                    ConversationScreen(
+                        name = state.chat.openName,
+                        messages = state.chat.messages,
+                        error = state.chat.error,
+                        onSend = viewModel::sendMessage,
+                        onRetry = viewModel::retryMessage,
+                        onBack = viewModel::closeChat,
+                    )
+                } else if (state.discoveryOpen) {
                     DiscoveryScreen(
                         filter = state.discovery,
                         onChange = viewModel::updateDiscovery,
@@ -69,6 +78,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onSignOut = viewModel::signOut,
                         onDiscovery = { viewModel.openDiscovery(true) },
                         onBackup = { viewModel.openBackup(true) },
+                        networkMode = state.networkMode,
+                        network = state.chat.network,
+                        onNetworkMode = viewModel::setNetworkMode,
                     )
                 } else {
                     MainScreen(
@@ -82,6 +94,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         following = state.following,
                         onFollow = viewModel::toggleFollow,
                         onEditProfile = { viewModel.openEditProfile(true) },
+                        chat = state.chat,
+                        onOpenChat = viewModel::openChat,
+                        onStartChat = viewModel::startChat,
+                        onClearChatError = viewModel::clearChatError,
+                        onNetworkSettings = { viewModel.openSettings(true) },
                     )
                 }
             }

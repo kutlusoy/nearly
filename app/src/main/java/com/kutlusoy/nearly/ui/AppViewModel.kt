@@ -3,6 +3,12 @@ package com.kutlusoy.nearly.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.kutlusoy.nearly.chat.ChatController
+import com.kutlusoy.nearly.chat.ChatStore
+import com.kutlusoy.nearly.chat.SqliteChatStore
+import com.kutlusoy.nearly.network.NetworkLink
+import com.kutlusoy.nearly.network.NetworkMode
+import com.kutlusoy.nearly.network.RelayHub
 import com.kutlusoy.nearly.nostr.AccountExistsException
 import com.kutlusoy.nearly.nostr.BirthDate
 import com.kutlusoy.nearly.nostr.FileKeyStore
@@ -27,18 +33,53 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = AndroidKeystoreBox()) : AndroidViewModel(app) {
+class AppViewModel @JvmOverloads constructor(
+    app: Application,
+    box: SecretBox = AndroidKeystoreBox(),
+    link: NetworkLink = RelayHub(app),
+    chatStoreFor: (String) -> ChatStore = { SqliteChatStore(app, it) },
+) : AndroidViewModel(app) {
+    private val chat = ChatController(link, chatStoreFor, viewModelScope)
     private val saved = SavedLoginStore(File(app.noBackupFilesDir, "session.bin"), box)
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
     private var session: Session? = null
 
-    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), following = savedFollowing(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), following = savedFollowing(), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch { chat.state.collect { c -> _state.update { it.copy(chat = c) } } }
         restore()
     }
+
+    private fun savedNetworkMode(): NetworkMode = NetworkMode.values().firstOrNull { it.name == prefs.getString(KEY_NETWORK, null) && (it == NetworkMode.Tor || it == NetworkMode.Direct) } ?: NetworkMode.Tor
+
+    fun setNetworkMode(mode: NetworkMode) {
+        prefs.edit().putString(KEY_NETWORK, mode.name).apply()
+        _state.update { it.copy(networkMode = mode) }
+        chat.setMode(mode)
+    }
+
+    // The chat opens with the account: network, inbox and the public profile
+    private fun openChat(opened: Session, username: String, age: Int?) {
+        chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode)
+    }
+
+    fun startChat(input: String) {
+        val own = _state.value.account?.npub?.let { runCatching { NostrKeys.toHex(NostrKeys.decodeNpub(it)) }.getOrNull() } ?: return
+        chat.startChat(input, own)
+    }
+
+    fun openChat(peer: String) = chat.openConversation(peer)
+
+    fun closeChat() = chat.closeConversation()
+
+    fun clearChatError() = chat.clearError()
+
+    fun sendMessage(text: String) = chat.send(text)
+
+    fun retryMessage(id: String) = chat.retry(id)
 
     // The user stays signed in until the sign out: the sealed login of this phone opens the account again at the next start
     private fun restore() {
@@ -48,6 +89,7 @@ class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = 
             val opened = Session(NostrKeys.publicKey(key), key.copyOf())
             session = opened
             _state.update { it.copy(screen = Screen.Main, account = AccountInfo(login.username, opened.npub, login.age), tab = Tab.Swipe) }
+            openChat(opened, login.username, login.age)
         } finally {
             key.fill(0)
         }
@@ -109,6 +151,7 @@ class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = 
                 persist(form.username, form.email, form.words, opened, age)
                 prefs.edit().putString(KEY_USERNAME, form.username.trim()).putString(KEY_EMAIL, form.email.trim()).putInt(KEY_AGE, age).apply()
                 _state.update { it.copy(busy = false, screen = Screen.Main, account = AccountInfo(form.username.trim(), opened.npub, age), tab = Tab.Profile) }
+                openChat(opened, form.username.trim(), age)
             }.onFailure { failure -> _state.update { it.copy(busy = false, error = if (failure is AccountExistsException) AppError.AccountExists else AppError.Generic) } }
         }
     }
@@ -126,6 +169,7 @@ class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = 
                 prefs.edit().putString(KEY_USERNAME, form.username.trim()).putString(KEY_EMAIL, form.email.trim()).apply()
                 persist(form.username, form.email, form.words, opened, age)
                 _state.update { it.copy(busy = false, screen = Screen.Main, account = AccountInfo(form.username.trim(), opened.npub, age), tab = Tab.Swipe) }
+                openChat(opened, form.username.trim(), age)
             }.onFailure { failure -> _state.update { it.copy(busy = false, error = if (failure is WrongPasswordException) AppError.SignInFailed else AppError.Generic) } }
         }
     }
@@ -164,6 +208,7 @@ class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = 
     private fun savedTheme(): ThemeMode = ThemeMode.values().firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.Light
 
     fun signOut() {
+        chat.close()
         saved.clear()
         session?.lock()
         session = null
@@ -171,6 +216,7 @@ class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = 
     }
 
     override fun onCleared() {
+        chat.close()
         session?.lock()
     }
 
@@ -180,5 +226,6 @@ class AppViewModel @JvmOverloads constructor(app: Application, box: SecretBox = 
         const val KEY_AGE = "age"
         const val KEY_THEME = "theme"
         const val KEY_FOLLOWING = "following"
+        const val KEY_NETWORK = "network.mode"
     }
 }

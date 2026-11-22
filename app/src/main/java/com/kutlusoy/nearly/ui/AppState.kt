@@ -1,5 +1,7 @@
 package com.kutlusoy.nearly.ui
 
+import com.kutlusoy.nearly.chat.ChatUiState
+import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.theme.ThemeMode
 import com.kutlusoy.nearly.ui.registration.SignInForm
@@ -23,6 +25,8 @@ data class AppState(
     val discoveryOpen: Boolean = false,
     val editProfileOpen: Boolean = false,
     val backupOpen: Boolean = false,
+    val chat: ChatUiState = ChatUiState(),
+    val networkMode: NetworkMode = NetworkMode.Tor,
     val profile: MyProfile = MyProfile(),
     val following: Set<String> = emptySet(),
     val discovery: DiscoveryFilter = DiscoveryFilter(),
