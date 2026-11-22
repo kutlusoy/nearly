@@ -1,10 +1,10 @@
 # Nearly: Photo Upload Guideline
 
-- **Version:** 0.2 (draft)
-- **Date:** November 21, 2026
+- **Version:** 0.3 (draft)
+- **Date:** November 22, 2026
 - **Audience:** Android developers of Nearly
 - **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/media/` (`PhotoProcessor.kt`, `PhotoGeometry.kt`, `BlurHash.kt`, `PhotoPublisher.kt`) and `app/src/main/java/com/kutlusoy/nearly/nostr/` (`ImageSanitizer.kt`, `Blossom.kt`), tests in the matching `src/test` folders
-- **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-decisions.md`](./guideline-decisions.md) rows 1, 7 and 8, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), Blossom [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md) and [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md)
+- **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-decisions.md`](./guideline-decisions.md) rows 1, 7 and 8, [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), Blossom [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md), [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) and [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
 
@@ -47,6 +47,8 @@ Rules:
 - **Trust no server (MUST):** the answer must name the same hash and size as the file that was sent, and the address in it must be `https` (or a darknet address). Otherwise the server is skipped and the next one is tried.
 - **Download (MUST):** a loaded photo is compared with its hash and size limit, a changed file is refused.
 - **Network (MUST):** every request goes through `RelayRouter`. Over Tor the name of the server is resolved by Tor, the device resolves nothing. A blocked route or an unencrypted address to a clearnet server is refused before any request.
+- **Delete (BUD-12).** `BlossomClient.delete` sends `DELETE /<sha256>` to the server of the blob address with a token of kind 24242 (`t` = `delete`, `x` = hash, `expiration`, `server` = that host). Status 200 and 204 give `Deleted`, 404 gives `Gone` (the file is not there, which is the aim), 401, 402, 403 and 429 give `Refused`, everything else and every network or route problem gives `Unreachable`. The call never throws for server trouble. The same route and TLS rules as for the upload apply. The server is the one in the blob address, so a card of another person cannot make the app send a token to a third server.
+- **A server may refuse.** BUD-12 is optional. After `Refused` or `Unreachable` the photo is removed from the profile and the card anyway, and the screen says that the server may still hold the file. The sender cannot force a server.
 - **Servers:** two to three Blossom servers at the start, the first one that accepts is used. Copying the file to more servers is not done yet.
 
 ## 5. Tests
@@ -56,6 +58,7 @@ Rules:
 | `PhotoGeometryTest` | scaling, sample size, and the corners of all eight EXIF orientations against the EXIF table |
 | `BlurHashTest` | length and validity, the average and main color of solid colors, left and right halves keep their sides, invalid hashes, a photo post carries only a valid BlurHash |
 | `PhotoProcessorTest` | with Robolectric and real bitmaps: a JPEG with EXIF orientation, GPS and a camera maker comes out clean, orientations 2, 3, 6 and 8 give an upright photo (checked by the colors of the halves), a large photo is scaled with a thumbnail and a BlurHash, a transparent PNG gets a white background, a file that is no photo is refused |
+| `BlossomDeleteTest` | the delete request with its scoped token, the mapping of every status, route and TLS refusals, the hash check of the input, and the service deleting an uploaded photo |
 | `PhotoUploadTest` | metadata removal from synthetic JPEG and PNG, the upload request with its signed scoped token, fallback to the next server, answer checks, route and size rules, download with hash check, the service from file to a post reference |
 
 The photo tests run on the JVM with Robolectric (native graphics), they do not need a phone. The photos in `PhotoProcessorTest` are made from two color bitmaps, not from a real camera. The BlurHash method gives a slight gradient on solid colors, as the reference method does, so those tests check the average.
@@ -68,7 +71,7 @@ Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an
 - **Upload over Tor in practice:** progress, resume and failure handling for slow connections.
 - **Server list and fallback by quality**, mirror to several servers.
 - **Private photos** with end to end encryption and a retention time. Blossom has no standard expiration, a server with expiring uploads is still to be found (open question 1 of the decision record).
-- **Deleting** an uploaded photo (BUD-12).
+- **Check which servers offer BUD-12** (`OPTIONS /<sha256>` with `DELETE` in `Allow`) and show a hint when the chosen server does not.
 - **Display:** loading, a cache that is cleaned, the BlurHash as placeholder while loading.
 
 ## 7. Checklist
@@ -77,6 +80,7 @@ Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an
 - [x] Blossom upload with a scoped signed token and answer checks
 - [x] Download with hash check
 - [x] Upload service from file to a post reference
+- [x] Delete on the server (BUD-12), with a scoped token and mapped answers
 - [x] Decode, rotate, scale, JPEG, thumbnail, BlurHash on the device (tested with Robolectric)
 - [ ] Photo picker and camera in the interface
 - [ ] Test with real camera photos and on a weak phone
