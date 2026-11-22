@@ -71,6 +71,7 @@ class MemoryChatStore : ChatStore {
     private val wraps = HashSet<String>()
     private val profiles = HashMap<String, PeerProfile>()
     private val follows = LinkedHashSet<String>()
+    private val blocks = LinkedHashSet<String>()
     private var sync = 0L
 
     override fun add(message: ChatMessage): Boolean = if (rows.containsKey(message.id)) false else { rows[message.id] = message; true }
@@ -90,6 +91,8 @@ class MemoryChatStore : ChatStore {
     override fun setLastSync(seconds: Long) { sync = seconds }
     override fun peerProfile(peer: String) = profiles[peer]
     override fun setPeerProfile(peer: String, profile: PeerProfile) { profiles[peer] = profile }
+    override fun blocked() = blocks.toList()
+    override fun setBlocked(peer: String, blocked: Boolean) { if (blocked) blocks.add(peer) else blocks.remove(peer) }
     override fun followed() = follows.toList()
     override fun setFollowed(peer: String, followed: Boolean) { if (followed) follows.add(peer) else follows.remove(peer) }
 }

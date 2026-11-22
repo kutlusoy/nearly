@@ -128,7 +128,7 @@ class ChatService(
         if (text.isEmpty() || text.length > MAX_INCOMING_TEXT) return
         val mine = rumor.pubkey == own
         val peer = if (mine) rumor.tagValues("p").firstOrNull { isPubkey(it) } ?: return else rumor.pubkey
-        if (peer == own) return
+        if (peer == own || (!mine && store.isBlocked(peer))) return
         val message = ChatMessage(wrap.id, peer, mine, text, rumor.createdAt, if (mine) MessageStatus.Sent else MessageStatus.Received, read = mine)
         if (store.add(message)) {
             onChange()

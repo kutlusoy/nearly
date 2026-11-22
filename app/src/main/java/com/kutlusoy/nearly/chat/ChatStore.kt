@@ -40,16 +40,22 @@ interface ChatStore {
     // The people the user follows, kept on this phone
     fun followed(): List<String>
     fun setFollowed(peer: String, followed: Boolean)
+
+    // People whose messages are dropped on arrival
+    fun blocked(): List<String>
+    fun setBlocked(peer: String, blocked: Boolean)
+    fun isBlocked(peer: String): Boolean = peer in blocked()
 }
 
 class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
-    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 2) {
+    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 3) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE messages (id TEXT PRIMARY KEY, peer TEXT NOT NULL, mine INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL, read INTEGER NOT NULL)")
             db.execSQL("CREATE INDEX messages_peer ON messages (peer, at)")
             db.execSQL("CREATE TABLE wraps (id TEXT PRIMARY KEY)")
             db.execSQL("CREATE TABLE peers (peer TEXT PRIMARY KEY, name TEXT NOT NULL, about TEXT NOT NULL DEFAULT '', age INTEGER NOT NULL DEFAULT -1)")
             db.execSQL("CREATE TABLE followed (peer TEXT PRIMARY KEY)")
+            db.execSQL("CREATE TABLE blocked (peer TEXT PRIMARY KEY)")
             db.execSQL("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         }
 
@@ -59,6 +65,7 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
                 db.execSQL("ALTER TABLE peers ADD COLUMN age INTEGER NOT NULL DEFAULT -1")
                 db.execSQL("CREATE TABLE IF NOT EXISTS followed (peer TEXT PRIMARY KEY)")
             }
+            if (oldVersion < 3) db.execSQL("CREATE TABLE IF NOT EXISTS blocked (peer TEXT PRIMARY KEY)")
         }
     }
     private val db get() = helper.writableDatabase
@@ -155,6 +162,15 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
     override fun setFollowed(peer: String, followed: Boolean) {
         if (followed) db.insertWithOnConflict("followed", null, ContentValues().apply { put("peer", peer) }, SQLiteDatabase.CONFLICT_IGNORE)
         else db.delete("followed", "peer = ?", arrayOf(peer))
+    }
+
+    @Synchronized
+    override fun blocked(): List<String> = db.rawQuery("SELECT peer FROM blocked ORDER BY rowid", null).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    @Synchronized
+    override fun setBlocked(peer: String, blocked: Boolean) {
+        if (blocked) db.insertWithOnConflict("blocked", null, ContentValues().apply { put("peer", peer) }, SQLiteDatabase.CONFLICT_IGNORE)
+        else db.delete("blocked", "peer = ?", arrayOf(peer))
     }
 
     private fun meta(key: String): String? = db.rawQuery("SELECT value FROM meta WHERE key = ?", arrayOf(key)).use { if (it.moveToFirst()) it.getString(0) else null }
