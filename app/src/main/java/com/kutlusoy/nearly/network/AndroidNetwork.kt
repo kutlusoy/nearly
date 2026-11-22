@@ -7,7 +7,7 @@ object AndroidNetwork {
     fun create(context: Context, ports: NetworkPorts = NetworkPorts()): NetworkServices {
         val app = context.applicationContext
         return NetworkServices(
-            binaries = ServiceBinaries.fromNativeLibraryDir(File(app.applicationInfo.nativeLibraryDir)),
+            binaries = app.applicationInfo.nativeLibraryDir?.let { ServiceBinaries.fromNativeLibraryDir(File(it)) } ?: ServiceBinaries(null, null),
             root = File(app.noBackupFilesDir, "network"),
             ports = ports.resolved(),
             prepareI2pData = { copyCertificates(app, it) },
