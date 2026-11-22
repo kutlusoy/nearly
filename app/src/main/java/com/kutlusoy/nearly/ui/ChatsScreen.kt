@@ -73,11 +73,12 @@ fun ChatsScreen(
     now: Long = System.currentTimeMillis() / 1000,
     onFollowRequest: (String) -> Unit = {},
     onDeleteRequest: (String) -> Unit = {},
+    onBlockRequest: (String) -> Unit = {},
 ) {
     var dialog by remember { mutableStateOf(false) }
     var requests by remember { mutableStateOf(false) }
     if (requests) {
-        RequestsScreen(chat.requests, now, onFollowRequest, onDeleteRequest, onBack = { requests = false })
+        RequestsScreen(chat.requests, now, onFollowRequest, onDeleteRequest, onBlockRequest, onBack = { requests = false })
         return
     }
     if (dialog) {
@@ -234,7 +235,7 @@ private fun ConversationRow(item: ConversationUi, now: Long, onClick: () -> Unit
 
 // Messages of people the user does not follow stay here until the user follows the person or deletes them
 @Composable
-private fun RequestsScreen(requests: List<ConversationUi>, now: Long, onFollow: (String) -> Unit, onDelete: (String) -> Unit, onBack: () -> Unit) {
+private fun RequestsScreen(requests: List<ConversationUi>, now: Long, onFollow: (String) -> Unit, onDelete: (String) -> Unit, onBlock: (String) -> Unit, onBack: () -> Unit) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -267,6 +268,7 @@ private fun RequestsScreen(requests: List<ConversationUi>, now: Long, onFollow: 
                         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { onFollow(item.peer) }, modifier = Modifier.testTag("request-follow-${item.peer.take(8)}")) { Text(stringResource(R.string.requests_follow)) }
                             OutlinedButton(onClick = { onDelete(item.peer) }, modifier = Modifier.testTag("request-delete-${item.peer.take(8)}")) { Text(stringResource(R.string.requests_delete)) }
+                            OutlinedButton(onClick = { onBlock(item.peer) }, modifier = Modifier.testTag("request-block-${item.peer.take(8)}")) { Text(stringResource(R.string.block_action), color = MaterialTheme.colorScheme.error) }
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -295,11 +297,12 @@ private fun NewChatScreen(error: ChatError?, following: List<ContactUi>, onOpenC
                 onValueChange = { text = it.take(200) },
                 label = { Text(stringResource(R.string.newchat_label)) },
                 singleLine = true,
-                isError = error == ChatError.BadId || error == ChatError.ToSelf,
+                isError = error == ChatError.BadId || error == ChatError.ToSelf || error == ChatError.Blocked,
                 supportingText = {
                     when (error) {
                         ChatError.BadId -> Text(stringResource(R.string.newchat_bad_id))
                         ChatError.ToSelf -> Text(stringResource(R.string.newchat_to_self))
+                        ChatError.Blocked -> Text(stringResource(R.string.newchat_blocked))
                         else -> Unit
                     }
                 },

@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +64,8 @@ fun SettingsScreen(
     onNetworkMode: (NetworkMode) -> Unit = {},
     messagePolicy: MessagePolicy = MessagePolicy.Everyone,
     onMessagePolicy: (MessagePolicy) -> Unit = {},
+    blockedCount: Int = 0,
+    onBlocked: () -> Unit = {},
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
     BackHandler(onBack = onBack)
@@ -85,6 +88,10 @@ fun SettingsScreen(
                 Section(R.string.settings_messages)
                 ConnectionOption(R.string.policy_everyone, R.string.policy_everyone_help, messagePolicy == MessagePolicy.Everyone) { onMessagePolicy(MessagePolicy.Everyone) }
                 ConnectionOption(R.string.policy_followed, R.string.policy_followed_help, messagePolicy == MessagePolicy.FollowedOnly) { onMessagePolicy(MessagePolicy.FollowedOnly) }
+                Column(Modifier.fillMaxWidth().clickable(onClick = onBlocked).padding(vertical = 10.dp).testTag("blocked-row")) {
+                    Text(stringResource(R.string.blocked_title), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.blocked_count, blockedCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
 
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
