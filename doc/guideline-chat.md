@@ -1,10 +1,10 @@
 # Nearly: Chat Guideline
 
-- **Version:** 0.1 (draft)
+- **Version:** 0.2 (draft)
 - **Date:** November 22, 2026
 - **Audience:** Android developers of Nearly
-- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/chat/` (`ChatService.kt`, `ChatStore.kt`, `ChatController.kt`), `network/NetworkLink.kt`, `ui/ChatsScreen.kt`, `ui/ConversationScreen.kt`, tests `ChatServiceTest.kt`, `SqliteChatStoreTest.kt`, `ChatUiTest.kt`
-- **See also:** [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md)
+- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/chat/` (`ChatService.kt`, `ChatStore.kt`, `ChatController.kt`), `nostr/PhotoTransfer.kt`, `network/NetworkLink.kt`, `ui/ChatsScreen.kt`, `ui/ConversationScreen.kt`, `ui/ChatPhoto.kt`, tests `ChatServiceTest.kt`, `ChatPhotoTest.kt`, `SqliteChatStoreTest.kt`, `ChatUiTest.kt`
+- **See also:** [`guideline-nostr-client.md`](./guideline-nostr-client.md), [`guideline-nostr-keys.md`](./guideline-nostr-keys.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`guideline-photo-upload.md`](./guideline-photo-upload.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
 
@@ -22,7 +22,7 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 - The app subscribes to wraps addressed to its key. After the first start the filter begins three days before the last sync, because of the random times of the wraps.
 - Every wrap id is remembered. A wrap that arrives twice, from several relays or after a restart, is read once.
-- Anything that is not a valid wrap, has a rumor of another kind than 14, is empty or longer than 5000 characters is dropped without an error. The seal author MUST be the author of the rumor (checked in `GiftWrap.unwrap`).
+- Anything that is not a valid wrap, has a rumor of another kind than 14 (text), 24310 (photo chunk) or 24311 (photo receipt), is empty or longer than 5000 characters is dropped without an error. The seal author MUST be the author of the rumor (checked in `GiftWrap.unwrap`).
 - The chat with a person is identified by the key of the other person. A rumor written by the own key (from another own device) is filed under the first `p` tag.
 
 ## 3. Starting a chat
@@ -45,7 +45,7 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 ## 4. Storage
 
-- One SQLite database per account on the phone (`chat-<first 16 hex of the key>.db`), tables `messages`, `wraps`, `peers`, `followed`, `blocked`, `meta`. Messages are not encrypted in the database, the app storage is private to the app and excluded from backups.
+- One SQLite database per account on the phone (`chat-<first 16 hex of the key>.db`), tables `messages`, `chunks`, `photos`, `wraps`, `peers`, `followed`, `blocked`, `meta` (version 4). Messages are not encrypted in the database, the app storage is private to the app and excluded from backups.
 - Signing out keeps the database. Deleting a conversation is possible in the store (`deleteConversation`), a screen for it is still to do.
 
 ## 5. Network
@@ -58,10 +58,14 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 ## 6. Limits
 
 - At most 2000 characters per message sent, 5000 accepted.
-- No attachments, no photos, no reactions, no read receipts in this version. Private photos between two people follow the photo guideline.
+- Photos only as described in section 7, at most 1.2 MB each. No other attachments, no reactions, no read receipts for text in this version.
 - Links in messages are shown as text and cannot be tapped.
 
-## 7. Checklist
+## 7. Photos
+
+A high resolution photo travels as chunks inside the same encrypted chat (see [`guideline-photo-upload.md`](./guideline-photo-upload.md) section 7). The message list shows progress while it comes in, "Delivered" when the other phone checked it, and a photo that can be seen once shows no preview and is removed after it was viewed. The same rules as for text apply: blocked people are dropped, and a person who may not write to me cannot start a transfer.
+
+## 8. Checklist
 
 - [x] Messages go both ways in tests with the real wrap and unwrap code and a relay in memory
 - [x] History comes back on a new device, duplicates are read once, broken events are ignored
@@ -69,11 +73,12 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 - [ ] Tested on two phones against real relays through Tor and directly
 - [ ] Public relays of `relays.txt` checked (reachable, accept kind 1059 and kind 0)
 - [x] Block a person (local)
+- [x] Photos in the chat in pieces with delivery receipt and view once (tested with relays in memory)
 - [ ] Report a person to the relays
 - [ ] Delete a conversation from the screen
 - [ ] Notifications and background delivery
 
-## 8. Open Questions
+## 9. Open Questions
 
 1. Which relays accept gift wraps from unknown keys without payment or proof of work?
 2. How does a person without a friend find the first chat partner before the swipe and the map show real people?
