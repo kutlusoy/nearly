@@ -46,7 +46,15 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 onSubmit = viewModel::submitSignIn,
             )
             Screen.Main -> state.account?.let { account ->
-                if (state.chat.openPeer != null) {
+                val contact = state.chat.profile
+                if (contact != null) {
+                    ContactProfileScreen(
+                        contact = contact,
+                        onBack = viewModel::closeProfile,
+                        onMessage = viewModel::messageFromProfile,
+                        onToggleFollow = { viewModel.toggleContactFollow(contact.peer) },
+                    )
+                } else if (state.chat.openPeer != null) {
                     ConversationScreen(
                         name = state.chat.openName,
                         messages = state.chat.messages,
@@ -54,6 +62,16 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onSend = viewModel::sendMessage,
                         onRetry = viewModel::retryMessage,
                         onBack = viewModel::closeChat,
+                        onProfile = { state.chat.openPeer?.let(viewModel::openProfile) },
+                    )
+                } else if (state.followingOpen) {
+                    FollowingScreen(
+                        contacts = state.chat.following,
+                        error = state.chat.error,
+                        onOpen = viewModel::openProfile,
+                        onFollowId = viewModel::followById,
+                        onClearError = viewModel::clearChatError,
+                        onBack = { viewModel.openFollowing(false) },
                     )
                 } else if (state.discoveryOpen) {
                     DiscoveryScreen(
@@ -99,6 +117,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onStartChat = viewModel::startChat,
                         onClearChatError = viewModel::clearChatError,
                         onNetworkSettings = { viewModel.openSettings(true) },
+                        onOpenFollowing = { viewModel.openFollowing(true) },
                     )
                 }
             }

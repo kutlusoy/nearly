@@ -81,6 +81,27 @@ class AppViewModel @JvmOverloads constructor(
 
     fun retryMessage(id: String) = chat.retry(id)
 
+    fun openFollowing(open: Boolean) = _state.update { it.copy(followingOpen = open) }
+
+    fun followById(input: String) {
+        val own = _state.value.account?.npub?.let { runCatching { NostrKeys.toHex(NostrKeys.decodeNpub(it)) }.getOrNull() } ?: return
+        chat.followById(input, own)
+    }
+
+    fun openProfile(peer: String) = chat.openProfile(peer)
+
+    fun closeProfile() = chat.closeProfile()
+
+    fun messageFromProfile() {
+        _state.update { it.copy(followingOpen = false) }
+        chat.messageFromProfile()
+    }
+
+    fun toggleContactFollow(peer: String) {
+        val followed = _state.value.chat.profile?.followed ?: false
+        chat.setFollowed(peer, !followed)
+    }
+
     // The user stays signed in until the sign out: the sealed login of this phone opens the account again at the next start
     private fun restore() {
         val login = saved.load() ?: return
@@ -174,7 +195,7 @@ class AppViewModel @JvmOverloads constructor(
         }
     }
 
-    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false) }
+    fun selectTab(tab: Tab) = _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false) }
 
     fun openSettings(open: Boolean) = _state.update { it.copy(settingsOpen = open) }
 
@@ -212,7 +233,7 @@ class AppViewModel @JvmOverloads constructor(
         saved.clear()
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {

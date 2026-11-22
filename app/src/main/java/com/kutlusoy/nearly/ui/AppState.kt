@@ -25,6 +25,7 @@ data class AppState(
     val discoveryOpen: Boolean = false,
     val editProfileOpen: Boolean = false,
     val backupOpen: Boolean = false,
+    val followingOpen: Boolean = false,
     val chat: ChatUiState = ChatUiState(),
     val networkMode: NetworkMode = NetworkMode.Tor,
     val profile: MyProfile = MyProfile(),
