@@ -33,7 +33,7 @@ class MainFlowTest {
     private val log = mutableListOf<Pair<String, SwipeDirection>>()
 
     private fun deck() = rule.setContent {
-        NearlyTheme { SwipeScreen(onSwiped = { person, direction -> log += person.id to direction }) }
+        NearlyTheme { SwipeScreen(people = SamplePeople, onSwiped = { person, direction -> log += person.id to direction }) }
     }
 
     @Test
@@ -61,15 +61,13 @@ class MainFlowTest {
     }
 
     @Test
-    fun theDeckEndsWithAnEmptyStateAndCanStartAgain() {
+    fun theDeckEndsWithAnEmptyState() {
         deck()
         repeat(DiscoveryFilter().deck(SamplePeople).size) { n ->
             rule.onNodeWithContentDescription("Skip").performClick()
             rule.waitUntil(5_000) { log.size == n + 1 }
         }
         rule.onNodeWithText("No one left nearby").assertExists()
-        rule.onNodeWithText("Show the sample profiles again").performClick()
-        rule.onNodeWithText("Mia").assertExists()
     }
 
     @Test

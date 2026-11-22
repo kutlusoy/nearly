@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="swipe_preview">Preview</string>
     <string name="swipe_later">Not now</string>
     <string name="swipe_skip">Skip</string>
     <string name="swipe_like">Like</string>
@@ -11,7 +10,6 @@
     <string name="swipe_hint">Right: like. Left: not now. Up: skip.</string>
     <string name="swipe_empty_title">No one left nearby</string>
     <string name="swipe_empty_help">Come back later, new people appear when they become active.</string>
-    <string name="swipe_again">Show the sample profiles again</string>
 
     <string name="profile_posts">Posts</string>
     <string name="profile_followers">Followers</string>

@@ -25,7 +25,7 @@ class FeedTest {
 
     @Test
     fun aPostCanBeLikedAndUnliked() {
-        rule.setContent { NearlyTheme { FeedScreen() } }
+        rule.setContent { NearlyTheme { FeedScreen(people = SamplePeople, posts = SamplePosts) } }
         rule.onNodeWithText("24 likes").assertExists()
         rule.onNodeWithTag("like-p1").performClick()
         rule.onNodeWithText("25 likes").assertExists()
@@ -35,14 +35,14 @@ class FeedTest {
     }
 
     private fun feedTab(dark: Boolean) {
-        rule.setContent { NearlyTheme(dark = dark) { MainScreen(account, Tab.Feed, {}, {}) } }
-        rule.onNodeWithText("Sunday climbing, finally reached the top.").assertExists()
+        rule.setContent { NearlyTheme(dark = dark) { MainScreen(account, Tab.Feed, {}, {}, nearby = com.kutlusoy.nearly.discovery.NearbyState(cell = "u33db", permission = true, people = SamplePeople)) } }
+        rule.onNodeWithText("People near you").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/08-main-feed${if (dark) "-dark" else ""}.png")
     }
 
     @Test
-    fun theFeedTabShowsThePosts() = feedTab(dark = false)
+    fun theFeedTabShowsThePeopleNearYou() = feedTab(dark = false)
 
     @Test
-    fun theFeedTabShowsThePostsInTheDarkTheme() = feedTab(dark = true)
+    fun theFeedTabShowsThePeopleNearYouInTheDarkTheme() = feedTab(dark = true)
 }

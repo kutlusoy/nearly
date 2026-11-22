@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="swipe_preview">Vorschau</string>
     <string name="swipe_later">Jetzt nicht</string>
     <string name="swipe_skip">Überspringen</string>
     <string name="swipe_like">Gefällt mir</string>
@@ -11,7 +10,6 @@
     <string name="swipe_hint">Rechts: gefällt mir. Links: jetzt nicht. Hoch: überspringen.</string>
     <string name="swipe_empty_title">Niemand mehr in der Nähe</string>
     <string name="swipe_empty_help">Komm später wieder, neue Leute erscheinen, sobald sie aktiv sind.</string>
-    <string name="swipe_again">Beispielprofile noch einmal zeigen</string>
 
     <string name="profile_posts">Beiträge</string>
     <string name="profile_followers">Follower</string>
