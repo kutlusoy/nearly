@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kutlusoy.nearly.BuildConfig
 import com.kutlusoy.nearly.R
+import com.kutlusoy.nearly.network.NetworkMode
+import com.kutlusoy.nearly.network.NetworkStatus
 import com.kutlusoy.nearly.ui.theme.ThemeMode
 
 @Composable
@@ -55,6 +57,9 @@ fun SettingsScreen(
     onSignOut: () -> Unit,
     onDiscovery: () -> Unit = {},
     onBackup: () -> Unit = {},
+    networkMode: NetworkMode = NetworkMode.Tor,
+    network: NetworkStatus = NetworkStatus(),
+    onNetworkMode: (NetworkMode) -> Unit = {},
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
     BackHandler(onBack = onBack)
@@ -71,6 +76,13 @@ fun SettingsScreen(
                 ThemeOption(R.string.theme_light, themeMode == ThemeMode.Light) { onTheme(ThemeMode.Light) }
                 ThemeOption(R.string.theme_dark, themeMode == ThemeMode.Dark) { onTheme(ThemeMode.Dark) }
                 ThemeOption(R.string.theme_system, themeMode == ThemeMode.System) { onTheme(ThemeMode.System) }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Section(R.string.settings_connection)
+                ConnectionOption(R.string.connection_tor, R.string.connection_tor_help, networkMode == NetworkMode.Tor) { onNetworkMode(NetworkMode.Tor) }
+                ConnectionOption(R.string.connection_direct, R.string.connection_direct_help, networkMode == NetworkMode.Direct) { onNetworkMode(NetworkMode.Direct) }
+                NetworkBanner(network, onSettings = {})
 
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -161,6 +173,21 @@ private fun ThemeOption(label: Int, selected: Boolean, onSelect: () -> Unit) {
     ) {
         RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
         Text(stringResource(label), style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun ConnectionOption(title: Int, help: Int, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().selectable(selected = selected, onClick = onSelect, role = Role.RadioButton).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
+        Column {
+            Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

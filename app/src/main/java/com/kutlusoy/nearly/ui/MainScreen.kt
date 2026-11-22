@@ -26,6 +26,8 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kutlusoy.nearly.R
+import com.kutlusoy.nearly.chat.ChatUiState
 
 private fun Tab.icon(selected: Boolean = true): ImageVector = when (this) {
     Tab.Swipe -> if (selected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
@@ -85,6 +88,11 @@ fun MainScreen(
     following: Set<String> = emptySet(),
     onFollow: (String) -> Unit = {},
     onEditProfile: () -> Unit = {},
+    chat: ChatUiState = ChatUiState(),
+    onOpenChat: (String) -> Unit = {},
+    onStartChat: (String) -> Unit = {},
+    onClearChatError: () -> Unit = {},
+    onNetworkSettings: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -97,7 +105,11 @@ fun MainScreen(
                         NavigationBarItem(
                             selected = entry == tab,
                             onClick = { onTab(entry) },
-                            icon = { Icon(entry.icon(entry == tab), contentDescription = stringResource(entry.label())) },
+                            icon = {
+                                BadgedBox(badge = { if (entry == Tab.Chats && chat.unread > 0) Badge { Text(chat.unread.coerceAtMost(99).toString()) } }) {
+                                    Icon(entry.icon(entry == tab), contentDescription = stringResource(entry.label()))
+                                }
+                            },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -114,6 +126,7 @@ fun MainScreen(
                 Tab.Swipe -> SwipeScreen(filter = discovery, onFilters = onFilters)
                 Tab.Feed -> FeedScreen(following = following, onFollow = onFollow)
                 Tab.Profile -> ProfileTab(account, profile, following.size, onSettings, onEditProfile)
+                Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings)
                 else -> SoonTab(tab)
             }
         }
