@@ -79,4 +79,15 @@
     <string name="blocked_help">Messages of these people are dropped when they arrive.</string>
     <string name="blocked_empty">You have not blocked anyone.</string>
     <string name="newchat_blocked">You blocked this person. Unblock the person in the settings first.</string>
+    <string name="message_delivered">Delivered</string>
+    <string name="message_sending_photo">Sending photo %1$d of %2$d</string>
+    <string name="photo_receiving">Receiving photo %1$d of %2$d</string>
+    <string name="photo_label">Photo</string>
+    <string name="photo_once_open">Photo, view once. Tap to open, it is gone afterwards.</string>
+    <string name="photo_once_sent">Photo, view once</string>
+    <string name="photo_once_gone">Photo, already viewed</string>
+    <string name="photo_attach">Send a photo</string>
+    <string name="photo_once_toggle">View once</string>
+    <string name="photo_too_big">This photo is too big for the chat.</string>
+    <string name="photo_close">Close</string>
 </resources>
