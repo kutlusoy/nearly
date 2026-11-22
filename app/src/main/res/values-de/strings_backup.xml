@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_backup">Konto sichern</string>
+    <string name="settings_backup_help">Benutzername, E-Mail, Wiederherstellungswörter und Schlüssel</string>
+    <string name="settings_stay_signed_in">Du bleibst auf diesem Handy angemeldet, bis du dich abmeldest.</string>
+
+    <string name="backup_title">Konto sichern</string>
+    <string name="backup_warning">Mit diesen Angaben kommt dein Konto auf jedem Handy zurück. Wer sie hat, kann dein Konto übernehmen, und niemand kann sie für dich zurücksetzen. Bewahre sie offline auf, zum Beispiel auf Papier an einem sicheren Ort.</string>
+    <string name="backup_unavailable">Das Konto ist nicht geöffnet. Melde dich neu an, um die Sicherung zu sehen.</string>
+    <string name="backup_to_sign_in">Zum erneuten Anmelden brauchst du</string>
+    <string name="backup_username">Benutzername</string>
+    <string name="backup_email">E-Mail</string>
+    <string name="backup_words">Fünf Wiederherstellungswörter</string>
+    <string name="backup_words_missing">Nicht auf diesem Handy gespeichert. Nimm die Wörter, die du aufgeschrieben hast.</string>
+    <string name="backup_npub">Öffentliche ID (npub)</string>
+    <string name="backup_npub_help">Darf geteilt werden. So finden dich andere Menschen.</string>
+    <string name="backup_nsec">Geheimer Schlüssel (nsec)</string>
+    <string name="backup_nsec_help">Niemals weitergeben. Er öffnet dein Konto auch in anderen Nostr-Apps, ohne die Wörter.</string>
+    <string name="backup_show">Geheimnisse anzeigen</string>
+    <string name="backup_hide">Geheimnisse verbergen</string>
+    <string name="backup_hidden">Verborgen</string>
+    <string name="backup_copy_all">Alle Angaben kopieren</string>
+</resources>

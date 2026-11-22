@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_backup">Back up your account</string>
+    <string name="settings_backup_help">Username, e-mail, recovery words and keys</string>
+    <string name="settings_stay_signed_in">You stay signed in on this phone until you sign out.</string>
+
+    <string name="backup_title">Back up your account</string>
+    <string name="backup_warning">These details bring your account back on any phone. Anyone who has them can take over your account, and nobody can reset them for you. Keep them offline, for example on paper in a safe place.</string>
+    <string name="backup_unavailable">The account is not open. Sign in again to see the backup.</string>
+    <string name="backup_to_sign_in">To sign in again you need</string>
+    <string name="backup_username">Username</string>
+    <string name="backup_email">E-mail</string>
+    <string name="backup_words">Five recovery words</string>
+    <string name="backup_words_missing">Not stored on this phone. Use the words you wrote down.</string>
+    <string name="backup_npub">Public ID (npub)</string>
+    <string name="backup_npub_help">Safe to share. This is how other people find you.</string>
+    <string name="backup_nsec">Secret key (nsec)</string>
+    <string name="backup_nsec_help">Never share it. It also opens your account in other Nostr apps, without the words.</string>
+    <string name="backup_show">Show secrets</string>
+    <string name="backup_hide">Hide secrets</string>
+    <string name="backup_hidden">Hidden</string>
+    <string name="backup_copy_all">Copy all details</string>
+</resources>

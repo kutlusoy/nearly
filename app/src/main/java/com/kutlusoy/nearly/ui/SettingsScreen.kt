@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,6 +53,8 @@ fun SettingsScreen(
     onTheme: (ThemeMode) -> Unit,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
+    onDiscovery: () -> Unit = {},
+    onBackup: () -> Unit = {},
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
     BackHandler(onBack = onBack)
@@ -71,9 +74,27 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Section(R.string.settings_discovery)
+                Column(Modifier.fillMaxWidth().clickable(onClick = onDiscovery).padding(vertical = 10.dp)) {
+                    Text(stringResource(R.string.discovery_title), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.settings_discovery_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                 Section(R.string.settings_account)
                 Value(stringResource(R.string.settings_username), account.username)
                 account.age?.let { Value(stringResource(R.string.settings_age), stringResource(R.string.profile_age, it)) }
+                Text(
+                    stringResource(R.string.settings_stay_signed_in),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Column(Modifier.fillMaxWidth().clickable(onClick = onBackup).padding(vertical = 10.dp)) {
+                    Text(stringResource(R.string.settings_backup), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.settings_backup_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 val context = LocalContext.current
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).padding(vertical = 8.dp)) {

@@ -52,6 +52,14 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onChange = viewModel::updateDiscovery,
                         onBack = { viewModel.openDiscovery(false) },
                     )
+                } else if (state.backupOpen) {
+                    BackupScreen(backup = androidx.compose.runtime.remember { viewModel.backup() }, onBack = { viewModel.openBackup(false) })
+                } else if (state.editProfileOpen) {
+                    EditProfileScreen(
+                        profile = state.profile,
+                        onChange = viewModel::updateProfile,
+                        onBack = { viewModel.openEditProfile(false) },
+                    )
                 } else if (state.settingsOpen) {
                     SettingsScreen(
                         account = account,
@@ -60,6 +68,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onBack = { viewModel.openSettings(false) },
                         onSignOut = viewModel::signOut,
                         onDiscovery = { viewModel.openDiscovery(true) },
+                        onBackup = { viewModel.openBackup(true) },
                     )
                 } else {
                     MainScreen(
@@ -69,6 +78,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onSettings = { viewModel.openSettings(true) },
                         discovery = state.discovery,
                         onFilters = { viewModel.openDiscovery(true) },
+                        profile = state.profile,
+                        following = state.following,
+                        onFollow = viewModel::toggleFollow,
+                        onEditProfile = { viewModel.openEditProfile(true) },
                     )
                 }
             }
