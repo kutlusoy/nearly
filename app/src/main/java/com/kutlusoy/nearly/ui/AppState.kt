@@ -34,7 +34,6 @@ data class AppState(
     val networkMode: NetworkMode = NetworkMode.Tor,
     val messagePolicy: MessagePolicy = MessagePolicy.FollowedOnly,
     val profile: MyProfile = MyProfile(),
-    val following: Set<String> = emptySet(),
     val discovery: DiscoveryFilter = DiscoveryFilter(),
     val busy: Boolean = false,
     val error: AppError? = null,

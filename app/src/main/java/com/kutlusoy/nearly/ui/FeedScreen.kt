@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,17 +53,16 @@ import com.kutlusoy.nearly.ui.theme.NearlyColors
 // The discovery settings do not apply here.
 @Composable
 fun FeedScreen(
-    posts: List<Post> = SamplePosts,
-    people: List<Person> = SamplePeople,
+    people: List<Person>,
+    posts: List<Post> = emptyList(),
     following: Set<String> = emptySet(),
     onFollow: (String) -> Unit = {},
-    preview: Boolean = true,
 ) {
     var liked by rememberSaveable { mutableStateOf(listOf<String>()) }
     val feed = remember(posts, following) { feedPosts(posts, following) }
     val nearby = remember(people, following) { nearbyPeople(people, following) }
     Column(Modifier.fillMaxSize()) {
-        NearlyTopBar { if (preview) AssistChip(onClick = {}, label = { Text(stringResource(R.string.swipe_preview)) }) }
+        NearlyTopBar()
         LazyColumn(Modifier.fillMaxSize()) {
             if (nearby.isNotEmpty()) {
                 item {
