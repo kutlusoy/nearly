@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="location_title">Menschen in deiner Nähe finden</string>
+    <string name="location_help">Nearly braucht deinen ungefähren Ort. Nur ein Feld von etwa 5 km verlässt dein Handy, nie deine Position.</string>
+    <string name="location_allow">Ungefähren Standort erlauben</string>
+</resources>

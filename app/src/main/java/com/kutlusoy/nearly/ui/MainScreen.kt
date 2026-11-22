@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.chat.ChatUiState
+import com.kutlusoy.nearly.discovery.NearbyState
 
 private fun Tab.icon(selected: Boolean = true): ImageVector = when (this) {
     Tab.Swipe -> if (selected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
@@ -99,7 +100,12 @@ fun MainScreen(
     onFollowRequest: (String) -> Unit = {},
     onDeleteRequest: (String) -> Unit = {},
     onBlockRequest: (String) -> Unit = {},
+    nearby: NearbyState? = null,
+    onAllowLocation: () -> Unit = {},
+    onFollowKey: (String) -> Unit = {},
+    onMessageKey: (String) -> Unit = {},
 ) {
+    val followedKeys = chat.following.map { it.peer }.toSet()
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -129,8 +135,14 @@ fun MainScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                Tab.Swipe -> SwipeScreen(filter = discovery, onFilters = onFilters)
-                Tab.Feed -> FeedScreen(following = following, onFollow = onFollow)
+                Tab.Swipe -> if (nearby == null) SwipeScreen(filter = discovery, onFilters = onFilters) else SwipeScreen(
+                    people = nearby.people, filter = discovery, onFilters = onFilters, preview = false,
+                    needsLocation = !nearby.permission || nearby.cell == null, onAllowLocation = onAllowLocation,
+                    followed = followedKeys, onFollowPerson = onFollowKey, onMessagePerson = onMessageKey,
+                )
+                Tab.Feed -> if (nearby == null) FeedScreen(following = following, onFollow = onFollow) else FeedScreen(
+                    posts = emptyList(), people = nearby.people, following = followedKeys, onFollow = onFollowKey, preview = false,
+                )
                 Tab.Profile -> ProfileTab(account, profile, following.size + chat.following.size, onSettings, onEditProfile, onOpenFollowing)
                 Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings, onFollowRequest = onFollowRequest, onDeleteRequest = onDeleteRequest, onBlockRequest = onBlockRequest)
                 else -> SoonTab(tab)

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="location_title">Find people near you</string>
+    <string name="location_help">Nearly needs your approximate place. Only a field of about 5 km leaves your phone, never your position.</string>
+    <string name="location_allow">Allow approximate location</string>
+</resources>
