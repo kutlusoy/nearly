@@ -69,4 +69,14 @@
     <string name="policy_everyone_help">Anyone who has your ID can send you a message.</string>
     <string name="policy_followed">Only people I follow</string>
     <string name="policy_followed_help">Messages of other people stay hidden as requests, so spam stays out. A person who answers your message is always shown.</string>
+
+    <string name="block_action">Block</string>
+    <string name="block_confirm">Block this person</string>
+    <string name="block_undo">Unblock</string>
+    <string name="block_help">The chat is deleted and nothing from this person arrives any more. You can unblock the person in the settings.</string>
+    <string name="blocked_title">Blocked people</string>
+    <string name="blocked_count">%1$d blocked</string>
+    <string name="blocked_help">Messages of these people are dropped when they arrive.</string>
+    <string name="blocked_empty">You have not blocked anyone.</string>
+    <string name="newchat_blocked">You blocked this person. Unblock the person in the settings first.</string>
 </resources>
