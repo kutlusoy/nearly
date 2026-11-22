@@ -14,7 +14,7 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 The swipe mode shows one person at a time, as Tinder does. This guideline covers where the people come from, how the deck is built, what a swipe does, how a match comes about without a server, and which settings exist.
 
-Built: the screens, the filter with its rules, the profile view with a photo carousel, the discovery card (publish, hide, read by cell, checks), the approximate place from the phone (permission prompt), the deck from real people of the area, follow and message from the full view, and `People near you` in the feed. The swipe still shows a gradient in place of photos, because the photo upload has no screen yet, so a card needs no photo for now. Missing: stored decisions, the interest signal and the match, the lifestyle fields in the card.
+Built: the screens, the filter with its rules, the profile view with a photo carousel, the discovery card (publish, hide, read by cell, checks), the approximate place from the phone (permission prompt), the deck from real people of the area, follow and message from the full view, and `People near you` in the feed. A card without a photo shows a colour gradient with the first letter, a photo is not required yet. Photos: the card carries up to six photos and the screens show them (the editor uploads them, see [`guideline-photo-upload.md`](./guideline-photo-upload.md)). Missing: stored decisions, the interest signal and the match, the lifestyle fields in the card.
 
 ## 2. The discovery card
 
@@ -93,7 +93,7 @@ Built: card encode and parse with bad data, expiry and cell rules, the nine cell
 - [ ] Stored decisions, undo, return times
 - [ ] Interest signal and match, chat opens
 - [ ] Report and block from the full view
-- [ ] Photos in the card
+- [x] Photos in the card (up to six `imeta` tags, shown in the card, the detail view and the feed row)
 
 ## 10. Open Questions
 
