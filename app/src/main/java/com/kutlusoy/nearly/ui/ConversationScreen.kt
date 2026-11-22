@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +48,7 @@ import com.kutlusoy.nearly.chat.ChatError
 import com.kutlusoy.nearly.chat.ChatMessage
 import com.kutlusoy.nearly.chat.ChatService
 import com.kutlusoy.nearly.chat.MessageStatus
+import com.kutlusoy.nearly.chat.PhotoState
 
 @Composable
 fun ConversationScreen(
@@ -58,8 +60,16 @@ fun ConversationScreen(
     onBack: () -> Unit,
     now: Long = System.currentTimeMillis() / 1000,
     onProfile: () -> Unit = {},
+    loadPhoto: (String) -> ByteArray? = { null },
+    onSendPhoto: (android.net.Uri, Boolean) -> Unit = { _, _ -> },
+    onPhotoViewed: (String) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
+    var once by remember { mutableStateOf(false) }
+    var viewing by remember { mutableStateOf<String?>(null) }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) onSendPhoto(uri, once)
+    }
     var text by remember { mutableStateOf("") }
     val list = rememberLazyListState()
     LaunchedEffect(messages.size) {
@@ -94,13 +104,25 @@ fun ConversationScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         )
                     }
-                    items(messages, key = { it.id }) { message -> Bubble(message, now) { onRetry(message.id) } }
+                    items(messages, key = { it.id }) { message -> Bubble(message, now, loadPhoto, onOpen = { viewing = message.id }) { onRetry(message.id) } }
                 }
+            }
+            if (error == ChatError.PhotoTooBig) {
+                Text(stringResource(R.string.photo_too_big), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp))
             }
             if (error == ChatError.TooLong) {
                 Text(stringResource(R.string.conversation_too_long), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp))
             }
-            Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(onClick = { picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.testTag("attach-photo")) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.photo_attach), tint = MaterialTheme.colorScheme.primary)
+                }
+                androidx.compose.material3.FilterChip(
+                    selected = once,
+                    onClick = { once = !once },
+                    label = { Text(stringResource(R.string.photo_once_toggle)) },
+                    modifier = Modifier.padding(bottom = 8.dp).testTag("once-toggle"),
+                )
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it.take(ChatService.MAX_TEXT + 200) },
@@ -122,13 +144,24 @@ fun ConversationScreen(
             }
         }
     }
+    val open = viewing?.let { id -> messages.firstOrNull { it.id == id } }
+    val openInfo = open?.photo
+    if (open != null && openInfo != null && openInfo.state == PhotoState.Ready) {
+        PhotoViewer(open, openInfo, loadPhoto, onClose = {
+            viewing = null
+            if (!open.mine) onPhotoViewed(open.id)
+        })
+    }
 }
 
 @Composable
-private fun Bubble(message: ChatMessage, now: Long, onRetry: () -> Unit) {
+private fun Bubble(message: ChatMessage, now: Long, load: (String) -> ByteArray?, onOpen: () -> Unit, onRetry: () -> Unit) {
     val mine = message.mine
+    val photo = message.photo
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
-        Box(
+        if (photo != null) {
+            Box(Modifier.let { if (message.status == MessageStatus.Failed) it.clickable(onClick = onRetry) else it }) { PhotoBubble(message, photo, load, onOpen) }
+        } else Box(
             Modifier
                 .widthIn(max = 300.dp)
                 .background(
@@ -142,6 +175,8 @@ private fun Bubble(message: ChatMessage, now: Long, onRetry: () -> Unit) {
         }
         val footer = when {
             !mine -> formatTime(message.at, now)
+            photoFooter(message) != null -> photoFooter(message)!!
+            message.status == MessageStatus.Delivered -> formatTime(message.at, now) + " " + stringResource(R.string.message_delivered)
             message.status == MessageStatus.Sending -> stringResource(R.string.message_sending)
             message.status == MessageStatus.Failed -> stringResource(R.string.message_failed)
             else -> formatTime(message.at, now) + " " + stringResource(R.string.message_sent)
