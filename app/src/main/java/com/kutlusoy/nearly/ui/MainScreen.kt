@@ -1,6 +1,8 @@
 package com.kutlusoy.nearly.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,10 +30,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -69,7 +74,18 @@ private fun Tab.soon(): Int = when (this) {
 }
 
 @Composable
-fun MainScreen(account: AccountInfo, tab: Tab, onTab: (Tab) -> Unit, onSettings: () -> Unit) {
+fun MainScreen(
+    account: AccountInfo,
+    tab: Tab,
+    onTab: (Tab) -> Unit,
+    onSettings: () -> Unit,
+    discovery: DiscoveryFilter = DiscoveryFilter(),
+    onFilters: () -> Unit = {},
+    profile: MyProfile = MyProfile(),
+    following: Set<String> = emptySet(),
+    onFollow: (String) -> Unit = {},
+    onEditProfile: () -> Unit = {},
+) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -95,9 +111,9 @@ fun MainScreen(account: AccountInfo, tab: Tab, onTab: (Tab) -> Unit, onSettings:
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                Tab.Swipe -> SwipeScreen()
-                Tab.Feed -> FeedScreen()
-                Tab.Profile -> ProfileTab(account, onSettings)
+                Tab.Swipe -> SwipeScreen(filter = discovery, onFilters = onFilters)
+                Tab.Feed -> FeedScreen(following = following, onFollow = onFollow)
+                Tab.Profile -> ProfileTab(account, profile, following.size, onSettings, onEditProfile)
                 else -> SoonTab(tab)
             }
         }
@@ -128,8 +144,9 @@ private fun SoonTab(tab: Tab) {
 }
 
 // Built like the profile of Instagram: name and settings on top, picture and numbers, then the grid of photos
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileTab(account: AccountInfo, onSettings: () -> Unit) {
+private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount: Int, onSettings: () -> Unit, onEditProfile: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp).height(48.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(account.username, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -143,12 +160,28 @@ private fun ProfileTab(account: AccountInfo, onSettings: () -> Unit) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Stat(0, R.string.profile_posts)
                 Stat(0, R.string.profile_followers)
-                Stat(0, R.string.profile_following)
+                Stat(followingCount, R.string.profile_following)
             }
         }
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             account.age?.let { Text(stringResource(R.string.profile_age, it), style = MaterialTheme.typography.titleMedium) }
-            Text(shortId(account.npub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val place = listOf(profile.job, profile.city).filter { it.isNotBlank() }
+            if (place.isNotEmpty()) Text(place.joinToString(", "), style = MaterialTheme.typography.bodyMedium)
+            if (profile.about.isNotBlank()) Text(profile.about, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+            if (profile.lookingFor != null || profile.interests.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    profile.lookingFor?.let { SuggestionChip(onClick = {}, label = { Text(stringResource(it.label())) }) }
+                    profile.interests.forEach { SuggestionChip(onClick = {}, label = { Text(it) }) }
+                }
+            }
+            Text(shortId(account.npub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        }
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (profile.completeness() < 100) {
+                Text(stringResource(R.string.profile_complete, profile.completeness()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(progress = { profile.completeness() / 100f }, modifier = Modifier.fillMaxWidth())
+            }
+            OutlinedButton(onClick = onEditProfile, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.profile_edit)) }
         }
         Spacer(Modifier.height(20.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)

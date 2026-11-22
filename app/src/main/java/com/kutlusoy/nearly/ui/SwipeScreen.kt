@@ -8,7 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +54,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,7 +70,8 @@ import kotlinx.coroutines.launch
 
 enum class SwipeDirection { Like, Later, Skip }
 
-// One card at a time like Tinder: right likes, left means "not now", up skips without a signal
+// One card at a time like Tinder: right likes, left means "not now", up skips without a signal.
+// A tap on the left or the right half of the card flips through the photos.
 @Composable
 fun SwipeScreen(
     people: List<Person> = SamplePeople,
@@ -85,6 +88,7 @@ fun SwipeScreen(
     val current = deck.getOrNull(index)
     val next = deck.getOrNull(index + 1)
     val threshold = area.width * 0.3f
+    var photo by remember(current?.id) { mutableIntStateOf(0) }
 
     fun finish(direction: SwipeDirection) {
         val person = current ?: return
@@ -140,7 +144,7 @@ fun SwipeScreen(
                     PersonCard(
                         next,
                         Modifier.fillMaxSize().graphicsLayer { scaleX = 0.94f + 0.06f * progress; scaleY = 0.94f + 0.06f * progress },
-                        0f, 0f, 0f, null,
+                        0f, 0f, 0f, 0, null,
                     )
                 }
                 val like = (offset.value.x / threshold.coerceAtLeast(1f)).coerceIn(0f, 1f)
@@ -156,7 +160,11 @@ fun SwipeScreen(
                             translationY = offset.value.y
                             rotationZ = (offset.value.x / 40f).coerceIn(-14f, 14f)
                         }
-                        .clickable { detail = true }
+                        .pointerInput(current.id) {
+                            detectTapGestures { tap ->
+                                photo = if (tap.x < size.width / 2) (photo - 1).coerceAtLeast(0) else (photo + 1).coerceAtMost(current.photos - 1)
+                            }
+                        }
                         .pointerInput(index) {
                             detectDragGestures(
                                 onDragEnd = { release() },
@@ -166,7 +174,7 @@ fun SwipeScreen(
                                 scope.launch { offset.snapTo(offset.value + drag) }
                             }
                         },
-                    like, later, skip, { detail = true },
+                    like, later, skip, photo, { detail = true },
                 )
             }
             Row(
@@ -190,12 +198,28 @@ fun SwipeScreen(
 }
 
 @Composable
-private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: Float, skip: Float, onInfo: (() -> Unit)?) {
+private fun PersonCard(person: Person, modifier: Modifier, like: Float, later: Float, skip: Float, photo: Int, onInfo: (() -> Unit)?) {
+    val (from, to) = person.photoColors(photo)
     Box(
         modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(person.from, person.to))),
+            .background(Brush.linearGradient(listOf(from, to))),
     ) {
+        if (person.photos > 1) {
+            val description = stringResource(R.string.detail_photo, photo + 1, person.photos)
+            Row(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)
+                    .semantics { contentDescription = description }.testTag("photo-indicator"),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                repeat(person.photos) { i ->
+                    Box(
+                        Modifier.weight(1f).height(3.dp)
+                            .background(Color.White.copy(alpha = if (i == photo) 0.95f else 0.4f), CircleShape),
+                    )
+                }
+            }
+        }
         Text(
             person.name.take(1),
             modifier = Modifier.align(Alignment.Center),
