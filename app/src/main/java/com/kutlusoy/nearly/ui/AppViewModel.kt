@@ -1,6 +1,9 @@
 package com.kutlusoy.nearly.ui
 
 import android.app.Application
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kutlusoy.nearly.chat.ChatController
@@ -10,6 +13,10 @@ import com.kutlusoy.nearly.chat.SqliteChatStore
 import com.kutlusoy.nearly.discovery.AndroidAreaSource
 import com.kutlusoy.nearly.discovery.AreaSource
 import com.kutlusoy.nearly.discovery.NearbyController
+import com.kutlusoy.nearly.media.BlossomPhotoBackend
+import com.kutlusoy.nearly.media.PhotoBackend
+import com.kutlusoy.nearly.nostr.DeleteResult
+import com.kutlusoy.nearly.nostr.PhotoRef
 import com.kutlusoy.nearly.network.NetworkLink
 import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.network.RelayHub
@@ -28,6 +35,7 @@ import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.registration.SignInForm
 import com.kutlusoy.nearly.ui.theme.ThemeMode
 import java.io.File
+import java.io.InputStream
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +43,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 class AppViewModel @JvmOverloads constructor(
@@ -42,6 +52,7 @@ class AppViewModel @JvmOverloads constructor(
     box: SecretBox = AndroidKeystoreBox(),
     link: NetworkLink = RelayHub(app),
     area: AreaSource = AndroidAreaSource(app),
+    private val photos: PhotoBackend = BlossomPhotoBackend(link, cacheDir = File(app.cacheDir, "photos")),
     chatStoreFor: (String) -> ChatStore = { SqliteChatStore(app, it) },
 ) : AndroidViewModel(app) {
     private val chat = ChatController(link, chatStoreFor, viewModelScope)
@@ -50,6 +61,8 @@ class AppViewModel @JvmOverloads constructor(
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
     private val prefs = app.getSharedPreferences("nearly", Application.MODE_PRIVATE)
     private var session: Session? = null
+    private val pictures = android.util.LruCache<String, ImageBitmap>(48)
+    private val downloads = Semaphore(3)
 
     private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
@@ -94,7 +107,7 @@ class AppViewModel @JvmOverloads constructor(
     // The chat opens with the account: network, inbox and the public profile
     private fun openChat(opened: Session, username: String, age: Int?) {
         chat.setPolicy(_state.value.messagePolicy)
-        chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode)
+        chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode, _state.value.profile.photos.firstOrNull()?.url)
         nearby.open(opened)
         nearby.setRadius(radius(_state.value.discovery))
         publishCard()
@@ -111,7 +124,7 @@ class AppViewModel @JvmOverloads constructor(
             NearbyController.CardSnapshot(
                 name = account.username, age = account.age, gender = p.gender, looking = p.lookingFor,
                 languages = p.languages.mapNotNull { NearbyController.languageCode(it) }, job = p.job, city = p.city,
-                about = p.about, interests = p.interests, visible = s.discovery.visible,
+                about = p.about, interests = p.interests, visible = s.discovery.visible, photos = p.photos,
             ),
         )
     }
@@ -265,8 +278,71 @@ class AppViewModel @JvmOverloads constructor(
 
     fun updateProfile(profile: MyProfile) {
         MyProfile.save(prefs, profile)
+        val before = _state.value.profile
         _state.update { it.copy(profile = profile) }
         publishCard()
+        val account = _state.value.account
+        if (account != null && (before.about != profile.about || before.photos.firstOrNull() != profile.photos.firstOrNull())) {
+            chat.publishProfile(account.username, profile.about, account.age, profile.photos.firstOrNull()?.url)
+        }
+    }
+
+    // Prepares the photo, uploads it and adds it to the profile. The first photo is the profile picture.
+    fun addPhoto(open: () -> InputStream) {
+        val opened = session ?: return
+        val s = _state.value
+        if (s.photoBusy) return
+        if (s.profile.photos.size >= MAX_PHOTOS) {
+            _state.update { it.copy(photoNote = PhotoNote.TooMany) }
+            return
+        }
+        _state.update { it.copy(photoBusy = true, photoNote = null) }
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { photos.upload(opened, open) } }
+            result.onSuccess { ref ->
+                val p = _state.value.profile
+                updateProfile(p.copy(photos = (p.photos + ref).take(MAX_PHOTOS)))
+                _state.update { it.copy(photoBusy = false) }
+            }.onFailure { _state.update { it.copy(photoBusy = false, photoNote = PhotoNote.UploadFailed) } }
+        }
+    }
+
+    // The photo leaves the profile and the card at once, then the server is asked to delete the file (BUD-12), which it may refuse
+    fun removePhoto(index: Int) {
+        val opened = session ?: return
+        val p = _state.value.profile
+        val ref = p.photos.getOrNull(index) ?: return
+        updateProfile(p.copy(photos = p.photos.filterIndexed { i, _ -> i != index }))
+        pictures.remove(ref.sha256)
+        _state.update { it.copy(photoNote = null) }
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { photos.delete(opened, ref) } }.getOrDefault(DeleteResult.Unreachable)
+            val note = if (result == DeleteResult.Deleted || result == DeleteResult.Gone) PhotoNote.Removed else PhotoNote.ServerMayKeep
+            _state.update { it.copy(photoNote = note) }
+        }
+    }
+
+    fun makePhotoFirst(index: Int) {
+        val p = _state.value.profile
+        val ref = p.photos.getOrNull(index) ?: return
+        if (index == 0) return
+        updateProfile(p.copy(photos = listOf(ref) + p.photos.filterIndexed { i, _ -> i != index }))
+    }
+
+    fun clearPhotoNote() = _state.update { it.copy(photoNote = null) }
+
+    // A photo for the screens: from memory, from the disk cache or from the server, never more than three downloads at once
+    suspend fun loadPhoto(ref: PhotoRef): ImageBitmap? {
+        pictures.get(ref.sha256)?.let { return it }
+        return withContext(Dispatchers.IO) {
+            val bitmap = runCatching {
+                downloads.withPermit {
+                    val bytes = photos.load(ref)
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                }
+            }.getOrNull()
+            bitmap?.also { pictures.put(ref.sha256, it) }
+        }
     }
 
     fun openDiscovery(open: Boolean) = _state.update { it.copy(discoveryOpen = open) }

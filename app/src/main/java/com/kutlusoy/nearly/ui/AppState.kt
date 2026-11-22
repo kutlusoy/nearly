@@ -14,6 +14,9 @@ enum class Screen { Welcome, Registration, SignIn, Main }
 
 enum class AppError { SignInFailed, AccountExists, Generic }
 
+// What the photo screen tells the user after an upload or a removal
+enum class PhotoNote { TooMany, UploadFailed, Removed, ServerMayKeep }
+
 data class AccountInfo(val username: String, val npub: String, val age: Int?)
 
 data class AppState(
@@ -36,5 +39,7 @@ data class AppState(
     val profile: MyProfile = MyProfile(),
     val discovery: DiscoveryFilter = DiscoveryFilter(),
     val busy: Boolean = false,
+    val photoBusy: Boolean = false,
+    val photoNote: PhotoNote? = null,
     val error: AppError? = null,
 )
