@@ -66,7 +66,9 @@ fun PersonDetail(
                     HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
                         val (from, to) = person.photoColors(page)
                         Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(from, to))), contentAlignment = Alignment.Center) {
-                            Text(person.name.take(1), fontSize = 160.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.35f))
+                            val ref = person.photoRefs.getOrNull(page)
+                            if (ref != null) RemotePhoto(ref, Modifier.fillMaxSize())
+                            else Text(person.name.take(1), fontSize = 160.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.35f))
                         }
                     }
                     Row(Modifier.align(Alignment.TopCenter).padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

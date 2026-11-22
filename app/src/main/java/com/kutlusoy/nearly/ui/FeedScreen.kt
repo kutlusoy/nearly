@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -99,7 +101,12 @@ fun FeedScreen(
 private fun NearbyCard(person: Person, onFollow: () -> Unit) {
     OutlinedCard(Modifier.width(148.dp).testTag("nearby-${person.id}")) {
         Column(Modifier.padding(12.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Avatar(person.name, size = 64)
+            val first = person.photoRefs.firstOrNull()
+            if (first != null) {
+                RemotePhoto(first, Modifier.size(64.dp).clip(androidx.compose.foundation.shape.CircleShape))
+            } else {
+                Avatar(person.name, size = 64)
+            }
             Text("${person.name}, ${person.age}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(
                 stringResource(R.string.swipe_distance, person.distanceKm),
