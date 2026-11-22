@@ -63,7 +63,7 @@ class MainFlowTest {
     @Test
     fun theDeckEndsWithAnEmptyStateAndCanStartAgain() {
         deck()
-        repeat(SamplePeople.size) { n ->
+        repeat(DiscoveryFilter().deck(SamplePeople).size) { n ->
             rule.onNodeWithContentDescription("Skip").performClick()
             rule.waitUntil(5_000) { log.size == n + 1 }
         }
