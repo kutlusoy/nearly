@@ -18,7 +18,7 @@ data class ConversationUi(val peer: String, val name: String, val last: ChatMess
 // A person the user knows: the profile from the relays and the ID that is shown on the profile page
 data class ContactUi(val peer: String, val name: String, val about: String, val age: Int?, val npub: String, val followed: Boolean, val blocked: Boolean = false)
 
-enum class ChatError { BadId, ToSelf, TooLong, Blocked }
+enum class ChatError { BadId, ToSelf, TooLong, Blocked, PhotoTooBig }
 
 // Who can write to me: everybody, or only the people I follow and the people I wrote to myself. The rest stays hidden as a request.
 enum class MessagePolicy { Everyone, FollowedOnly }
@@ -56,7 +56,7 @@ class ChatController(
         val key = NostrKeys.toHex(session.publicKey).take(16)
         val chatStore = storeFor(key)
         store = chatStore
-        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, onIncoming = { message ->
+        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onIncoming = { message ->
             if (_state.value.openPeer == message.peer) {
                 chatStore.markRead(message.peer)
                 refresh()
@@ -174,6 +174,21 @@ class ChatController(
             SendResult.TooLong -> _state.update { it.copy(error = ChatError.TooLong) }
             else -> Unit
         }
+        refresh()
+    }
+
+    fun sendPhoto(bytes: ByteArray, width: Int, height: Int, once: Boolean) {
+        val peer = _state.value.openPeer ?: return
+        if (service?.sendPhoto(peer, bytes, width, height, once) == SendResult.PhotoTooBig) _state.update { it.copy(error = ChatError.PhotoTooBig) }
+        refresh()
+    }
+
+    fun reportPhotoTooBig() = _state.update { it.copy(error = ChatError.PhotoTooBig) }
+
+    fun photoBytes(id: String): ByteArray? = service?.photoBytes(id)
+
+    fun photoViewed(id: String) {
+        service?.photoViewed(id)
         refresh()
     }
 
