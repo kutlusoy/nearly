@@ -211,7 +211,7 @@ private fun ConversationRow(item: ConversationUi, now: Long, onClick: () -> Unit
         Avatar(item.name, size = 52)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(item.name, style = MaterialTheme.typography.titleSmall, fontWeight = if (item.unread > 0) FontWeight.Bold else FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val preview = if (item.last.mine) stringResource(R.string.chats_you, item.last.text) else item.last.text
+            val preview = if (item.last.mine) stringResource(R.string.chats_you, messagePreview(item.last)) else messagePreview(item.last)
             Text(
                 preview,
                 style = MaterialTheme.typography.bodyMedium,
@@ -261,7 +261,7 @@ private fun RequestsScreen(requests: List<ConversationUi>, now: Long, onFollow: 
                             Avatar(item.name, size = 44)
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                                 Text(item.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(item.last.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(messagePreview(item.last), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                             Text(formatTime(item.last.at, now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

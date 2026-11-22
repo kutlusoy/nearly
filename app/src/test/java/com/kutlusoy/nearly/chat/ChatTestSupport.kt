@@ -34,6 +34,11 @@ class FakeRelay(var answers: Int = 1, var accept: Boolean = true) : NostrTranspo
         return AutoCloseable { subs.remove(sub) }
     }
 
+    fun deliverNew(event: Event) {
+        events.add(event)
+        deliverAgain(event)
+    }
+
     fun deliverAgain(event: Event) = subs.toList().forEach { if (it.filters.any { f -> matches(f, event) }) it.onEvent(event) }
 
     private fun matches(f: Filter, e: Event): Boolean {
@@ -74,6 +79,20 @@ class MemoryChatStore : ChatStore {
     private val follows = LinkedHashSet<String>()
     private val blocks = LinkedHashSet<String>()
     private var sync = 0L
+    private val pieces = HashMap<String, java.util.TreeMap<Int, ByteArray>>()
+    private val files = HashMap<String, ByteArray>()
+
+    override fun setPhoto(id: String, photo: PhotoInfo) { rows[id]?.let { rows[id] = it.copy(photo = photo) } }
+    override fun setRead(id: String, read: Boolean) { rows[id]?.let { rows[id] = it.copy(read = read) } }
+    override fun addChunk(transfer: String, index: Int, data: ByteArray): Boolean {
+        val map = pieces.getOrPut(transfer) { java.util.TreeMap() }
+        return if (map.containsKey(index)) false else { map[index] = data; true }
+    }
+    override fun chunks(transfer: String) = pieces[transfer]?.map { it.key to it.value } ?: emptyList()
+    override fun dropChunks(transfer: String) { pieces.remove(transfer) }
+    override fun savePhoto(transfer: String, bytes: ByteArray) { files[transfer] = bytes }
+    override fun photoBytes(transfer: String) = files[transfer]
+    override fun deletePhoto(transfer: String) { files.remove(transfer) }
 
     override fun add(message: ChatMessage): Boolean = if (rows.containsKey(message.id)) false else { rows[message.id] = message; true }
     override fun remove(id: String) { rows.remove(id) }
@@ -85,7 +104,10 @@ class MemoryChatStore : ChatStore {
     }.sortedByDescending { it.last.at }
     override fun unreadTotal() = rows.values.count { !it.read }
     override fun markRead(peer: String) { rows.replaceAll { _, m -> if (m.peer == peer) m.copy(read = true) else m } }
-    override fun deleteConversation(peer: String) { rows.values.removeAll { it.peer == peer } }
+    override fun deleteConversation(peer: String) {
+        rows.values.filter { it.peer == peer }.mapNotNull { it.photo?.transfer }.forEach { files.remove(it); pieces.remove(it) }
+        rows.values.removeAll { it.peer == peer }
+    }
     override fun seenWrap(id: String) = id in wraps
     override fun rememberWrap(id: String) { wraps.add(id) }
     override fun lastSync() = sync
