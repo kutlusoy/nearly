@@ -18,6 +18,7 @@ import com.kutlusoy.nearly.ui.theme.isDark
 fun AppRoot(viewModel: AppViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
     val dark = state.themeMode.isDark()
+    val context = LocalContext.current
     val activity = LocalContext.current.findActivity() as? ComponentActivity
     // The system bar icons follow the chosen theme, not the theme of the phone
     SideEffect {
@@ -67,6 +68,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onRetry = viewModel::retryMessage,
                             onBack = viewModel::closeChat,
                             onProfile = { state.chat.openPeer?.let(viewModel::openProfile) },
+                            loadPhoto = viewModel::chatPhoto,
+                            onSendPhoto = { uri, once -> viewModel.sendChatPhoto({ context.contentResolver.openInputStream(uri) ?: throw java.io.IOException("cannot open") }, once) },
+                            onPhotoViewed = viewModel::chatPhotoViewed,
                         )
                     } else if (state.followingOpen) {
                         FollowingScreen(
