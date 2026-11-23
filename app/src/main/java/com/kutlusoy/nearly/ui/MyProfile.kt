@@ -2,6 +2,8 @@ package com.kutlusoy.nearly.ui
 
 import android.content.SharedPreferences
 import com.kutlusoy.nearly.media.BlurHash
+import com.kutlusoy.nearly.nostr.CardExtras
+import com.kutlusoy.nearly.nostr.CardPrompt
 import com.kutlusoy.nearly.nostr.PhotoRef
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -23,6 +25,7 @@ const val INTEREST_LENGTH = 24
 const val MAX_PHOTOS = 6
 const val HEIGHT_MIN_CM = 100
 const val HEIGHT_MAX_CM = 250
+const val LINK_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@._:/#?=&%~+-"
 
 val LANGUAGES = listOf(
     "English", "Deutsch", "Français", "Español", "Italiano", "Português", "Nederlands", "Polski", "Türkçe", "Svenska",
@@ -49,7 +52,61 @@ data class MyProfile(
     val smoking: Frequency? = null,
     val exercise: Frequency? = null,
     val photos: List<PhotoRef> = emptyList(),
+    val pronouns: String = "",
+    val orientation: Orientation? = null,
+    val family: FamilyPlans? = null,
+    val zodiac: Zodiac? = null,
+    val diet: Diet? = null,
+    val pets: String = "",
+    val link: String = "",
+    val prompts: List<ProfilePrompt> = emptyList(),
+    val hidden: Set<String> = emptySet(),
 ) {
+    fun withLink(text: String) = copy(link = text.filter { it in LINK_CHARS }.take(LINK_MAX))
+
+    fun toggleHidden(field: ProfileField) = copy(hidden = if (field.key in hidden) hidden - field.key else hidden + field.key)
+
+    fun isHidden(field: ProfileField) = field.key in hidden
+
+    fun withNewPrompt(): MyProfile {
+        if (prompts.size >= PROMPTS_MAX) return this
+        val free = (0 until PROMPT_COUNT).firstOrNull { q -> prompts.none { it.q == q } } ?: return this
+        return copy(prompts = prompts + ProfilePrompt(free, ""))
+    }
+
+    fun withoutPrompt(index: Int) = copy(prompts = prompts.filterIndexed { i, _ -> i != index })
+
+    fun withAnswer(index: Int, text: String) = copy(prompts = prompts.mapIndexed { i, p -> if (i == index) p.copy(a = text.replace('\n', ' ').take(PROMPT_ANSWER_MAX)) else p })
+
+    // The next question that no other prompt uses
+    fun withNextQuestion(index: Int): MyProfile {
+        val current = prompts.getOrNull(index) ?: return this
+        val used = prompts.filterIndexed { i, _ -> i != index }.map { it.q }.toSet()
+        val next = (1..PROMPT_COUNT).map { (current.q + it) % PROMPT_COUNT }.firstOrNull { it !in used } ?: return this
+        return copy(prompts = prompts.mapIndexed { i, p -> if (i == index) p.copy(q = next) else p })
+    }
+
+    // What goes into the discovery card besides the basics. Hidden fields and empty answers are left out.
+    fun cardExtras(): CardExtras {
+        fun shown(field: ProfileField) = field.key !in hidden
+        fun code(e: Enum<*>?, field: ProfileField) = e?.takeIf { shown(field) }?.name?.lowercase()
+        return CardExtras(
+            pronouns = if (shown(ProfileField.Pronouns)) pronouns.trim() else "",
+            school = if (shown(ProfileField.School)) school.trim() else "",
+            height = if (shown(ProfileField.Height)) heightCm else null,
+            drinking = code(drinking, ProfileField.Drinking),
+            smoking = code(smoking, ProfileField.Smoking),
+            exercise = code(exercise, ProfileField.Exercise),
+            orientation = code(orientation, ProfileField.Orientation),
+            family = code(family, ProfileField.Family),
+            zodiac = code(zodiac, ProfileField.Zodiac),
+            diet = code(diet, ProfileField.Diet),
+            pets = if (shown(ProfileField.Pets)) pets.trim() else "",
+            link = if (shown(ProfileField.Link)) link.trim() else "",
+            prompts = if (shown(ProfileField.Prompts)) prompts.filter { it.a.isNotBlank() }.map { CardPrompt(it.q, it.a.trim()) } else emptyList(),
+        )
+    }
+
     fun withAbout(text: String) = copy(about = text.take(ABOUT_MAX))
 
     fun withInterest(raw: String): MyProfile {
@@ -77,12 +134,46 @@ data class MyProfile(
             about.isNotBlank(), gender != null, lookingFor != null, interests.isNotEmpty(), languages.isNotEmpty(),
             job.isNotBlank(), school.isNotBlank(), city.isNotBlank(), heightCm != null,
             drinking != null || smoking != null || exercise != null,
+            orientation != null || family != null || zodiac != null || diet != null,
+            pronouns.isNotBlank() || pets.isNotBlank() || link.isNotBlank(),
+            prompts.any { it.a.isNotBlank() },
+            photos.isNotEmpty(),
         ).count { it }
-        return filled * 100 / 10
+        return filled * 100 / 14
     }
 
     companion object {
         private const val P = "profile."
+
+        private inline fun <reified T : Enum<T>> byCode(code: String?): T? = code?.let { c -> enumValues<T>().firstOrNull { it.name.lowercase() == c } }
+
+        // A new phone: the profile is built again from the own card on the relays. Fields that were hidden are not in the card and stay empty.
+        fun fromCard(card: com.kutlusoy.nearly.nostr.DiscoveryCard, base: MyProfile = MyProfile()): MyProfile {
+            val x = card.extras
+            return base.copy(
+                about = card.about.take(ABOUT_MAX),
+                gender = card.gender?.let { code -> com.kutlusoy.nearly.discovery.NearbyController.GENDER_CODE.entries.firstOrNull { it.value == code }?.key },
+                lookingFor = byCode<LookingFor>(card.looking),
+                interests = card.interests.take(INTERESTS_MAX),
+                languages = card.languages.mapNotNull { com.kutlusoy.nearly.discovery.NearbyController.languageName(it) }.toSet(),
+                job = card.job,
+                school = x.school,
+                city = card.city,
+                heightCm = x.height,
+                drinking = byCode<Frequency>(x.drinking),
+                smoking = byCode<Frequency>(x.smoking),
+                exercise = byCode<Frequency>(x.exercise),
+                photos = card.photos.take(MAX_PHOTOS),
+                pronouns = x.pronouns,
+                orientation = byCode<Orientation>(x.orientation),
+                family = byCode<FamilyPlans>(x.family),
+                zodiac = byCode<Zodiac>(x.zodiac),
+                diet = byCode<Diet>(x.diet),
+                pets = x.pets,
+                link = x.link,
+                prompts = x.prompts.map { ProfilePrompt(it.q, it.a) },
+            )
+        }
 
         private inline fun <reified T : Enum<T>> enumOrNull(prefs: SharedPreferences, key: String): T? =
             enumValues<T>().firstOrNull { it.name == prefs.getString(P + key, null) }
@@ -101,7 +192,31 @@ data class MyProfile(
             smoking = enumOrNull<Frequency>(prefs, "smoking"),
             exercise = enumOrNull<Frequency>(prefs, "exercise"),
             photos = parsePhotos(prefs.getString(P + "photos", "") ?: ""),
+            pronouns = (prefs.getString(P + "pronouns", "") ?: "").take(PRONOUNS_MAX),
+            orientation = enumOrNull<Orientation>(prefs, "orientation"),
+            family = enumOrNull<FamilyPlans>(prefs, "family"),
+            zodiac = enumOrNull<Zodiac>(prefs, "zodiac"),
+            diet = enumOrNull<Diet>(prefs, "diet"),
+            pets = (prefs.getString(P + "pets", "") ?: "").take(PETS_MAX),
+            link = (prefs.getString(P + "link", "") ?: "").filter { it in LINK_CHARS }.take(LINK_MAX),
+            prompts = parsePrompts(prefs.getString(P + "prompts", "") ?: ""),
+            hidden = (prefs.getString(P + "hidden", "") ?: "").split(',').filter { key -> ProfileField.values().any { it.key == key } }.toSet(),
         )
+
+        fun promptsJson(prompts: List<ProfilePrompt>): String = buildJsonArray {
+            prompts.take(PROMPTS_MAX).forEach { p -> add(buildJsonObject { put("q", p.q); put("a", p.a) }) }
+        }.toString()
+
+        fun parsePrompts(text: String): List<ProfilePrompt> {
+            if (text.isBlank()) return emptyList()
+            val array = runCatching { Json.parseToJsonElement(text).jsonArray }.getOrNull() ?: return emptyList()
+            return array.mapNotNull { element ->
+                val o = runCatching { element.jsonObject }.getOrNull() ?: return@mapNotNull null
+                val q = (o["q"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0 until PROMPT_COUNT } ?: return@mapNotNull null
+                val a = (o["a"] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull ?: return@mapNotNull null
+                ProfilePrompt(q, a.take(PROMPT_ANSWER_MAX))
+            }.distinctBy { it.q }.take(PROMPTS_MAX)
+        }
 
         private val HEX64 = Regex("[0-9a-f]{64}")
 
@@ -148,6 +263,15 @@ data class MyProfile(
                 .putString(P + "smoking", p.smoking?.name ?: "")
                 .putString(P + "exercise", p.exercise?.name ?: "")
                 .putString(P + "photos", photosJson(p.photos))
+                .putString(P + "pronouns", p.pronouns)
+                .putString(P + "orientation", p.orientation?.name ?: "")
+                .putString(P + "family", p.family?.name ?: "")
+                .putString(P + "zodiac", p.zodiac?.name ?: "")
+                .putString(P + "diet", p.diet?.name ?: "")
+                .putString(P + "pets", p.pets)
+                .putString(P + "link", p.link)
+                .putString(P + "prompts", promptsJson(p.prompts))
+                .putString(P + "hidden", p.hidden.joinToString(","))
                 .apply()
         }
     }
