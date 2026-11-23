@@ -30,6 +30,23 @@ class ChatPhotoUiTest {
         ChatMessage(id, "peer", mine, "", 1_800_000_000, status, true, PhotoInfo("a".repeat(32), 400, 300, 50_000, once, state, have, 4))
 
     @Test
+    fun aWaitingPhotoOffersRelayReplaceAndCancel() {
+        val calls = mutableListOf<String>()
+        val waiting = photo("ph:9", mine = true, state = PhotoState.Ready, once = false, status = MessageStatus.Waiting)
+        rule.setContent {
+            NearlyTheme {
+                ConversationScreen("Anna", listOf(waiting), null, onSend = {}, onRetry = {}, onBack = {}, onCancelPhoto = { calls += "cancel:$it" }, onPhotoViaRelay = { calls += "relay:$it" })
+            }
+        }
+        rule.onNodeWithText("Waiting. Send it through the relays or take it back.").assertExists()
+        rule.onNodeWithTag("direct-toggle").assertExists()
+        rule.onNodeWithTag("photo-replace").assertExists()
+        rule.onNodeWithTag("photo-relay").performClick()
+        rule.onNodeWithTag("photo-cancel").performClick()
+        assertEquals(listOf("relay:ph:9", "cancel:ph:9"), calls)
+    }
+
+    @Test
     fun photosShowProgressAndStates() {
         val viewed = mutableListOf<String>()
         val messages = listOf(

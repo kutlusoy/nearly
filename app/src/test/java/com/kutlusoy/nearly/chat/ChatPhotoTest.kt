@@ -109,6 +109,57 @@ class ChatPhotoTest {
     }
 
     @Test
+    fun aWaitingPhotoLeavesOnlyWhenTheSenderSendsItThroughTheRelays() {
+        val chat = benChat()
+        val sent = annaChat.sendPhoto(ben.hex(), big(30_000), 2000, 1500, false, directFirst = true) as SendResult.Queued
+        val id = sent.message.id
+        assertEquals(MessageStatus.Waiting, annaStore.message(id)!!.status)
+        assertTrue(relay.events.isEmpty(), "nothing leaves while the photo waits")
+        assertNotNull(annaStore.photoBytes(sent.message.photo!!.transfer))
+        annaChat.sendViaRelay(id)
+        assertEquals(MessageStatus.Delivered, annaStore.message(id)!!.status)
+        assertNotNull(chat.photoBytes(id))
+    }
+
+    @Test
+    fun aWaitingPhotoCanBeTakenBackWithoutAnyTraffic() {
+        val sent = annaChat.sendPhoto(ben.hex(), big(30_000), 2000, 1500, false, directFirst = true) as SendResult.Queued
+        assertTrue(annaChat.cancelPhoto(sent.message.id))
+        assertNull(annaStore.message(sent.message.id))
+        assertNull(annaStore.photoBytes(sent.message.photo!!.transfer))
+        assertTrue(relay.events.isEmpty())
+        assertEquals(false, annaChat.cancelPhoto(sent.message.id))
+    }
+
+    @Test
+    fun aPhotoOnTheWayIsTakenBackAndTheReceiverDropsThePieces() {
+        benChat()
+        val bytes = big(70_000)
+        val meta = PhotoTransfer.meta(bytes, 2000, 1500, false)
+        relay.deliverNew(PhotoTransfer.wrapChunk(anna, ben.hex(), meta, 0, bytes))
+        relay.deliverNew(PhotoTransfer.wrapChunk(anna, ben.hex(), meta, 1, bytes))
+        val id = "ph:${meta.transfer}"
+        assertEquals(PhotoState.Receiving, benStore.message(id)!!.photo!!.state)
+        annaStore.add(ChatMessage(id, ben.hex(), true, "", 1, MessageStatus.Sending, true, PhotoInfo(meta.transfer, 2000, 1500, bytes.size, false, PhotoState.Ready, 2, meta.total)))
+        annaStore.savePhoto(meta.transfer, bytes)
+        assertTrue(annaChat.cancelPhoto(id))
+        assertNull(benStore.message(id), "the pieces are gone on the other phone")
+        assertEquals(emptyList(), benStore.chunks(meta.transfer))
+        relay.deliverNew(PhotoTransfer.wrapChunk(anna, ben.hex(), meta, 2, bytes))
+        assertNull(benStore.message(id), "a late piece does not start the photo again")
+    }
+
+    @Test
+    fun aPhotoCanBeReplacedByAnother() {
+        val first = annaChat.sendPhoto(ben.hex(), big(30_000), 2000, 1500, false, directFirst = true) as SendResult.Queued
+        val second = annaChat.replacePhoto(first.message.id, big(40_000), 2000, 1500, true, directFirst = true) as SendResult.Queued
+        assertNull(annaStore.message(first.message.id))
+        assertEquals(MessageStatus.Waiting, annaStore.message(second.message.id)!!.status)
+        assertEquals(true, annaStore.message(second.message.id)!!.photo!!.once)
+        assertEquals(1, annaStore.messages(ben.hex()).size)
+    }
+
+    @Test
     fun aPersonCanOnlyHaveFewTransfersOpen() {
         benChat()
         repeat(5) { n ->

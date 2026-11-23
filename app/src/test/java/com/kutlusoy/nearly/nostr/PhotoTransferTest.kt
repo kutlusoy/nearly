@@ -90,6 +90,15 @@ class PhotoTransferTest {
     }
 
     @Test
+    fun aCancelNamesTheTransfer() {
+        val meta = PhotoTransfer.meta(photo(10), 10, 10, false)
+        val rumor = assertNotNull(GiftWrap.unwrap(ben, PhotoTransfer.cancel(anna, ben.hex(), meta.transfer))).rumor
+        assertEquals(meta.transfer, PhotoTransfer.parseCancel(rumor))
+        assertNull(PhotoTransfer.parseCancel(rumor.copy(kind = PhotoTransfer.KIND_RECEIPT)))
+        assertNull(PhotoTransfer.parseCancel(rumor.copy(tags = listOf(listOf("i", "short")))))
+    }
+
+    @Test
     fun sizeAndShapeAreChecked() {
         kotlin.test.assertFailsWith<IllegalArgumentException> { PhotoTransfer.meta(ByteArray(0), 1, 1, false) }
         kotlin.test.assertFailsWith<IllegalArgumentException> { PhotoTransfer.meta(ByteArray(PhotoTransfer.MAX_BYTES + 1), 1, 1, false) }
