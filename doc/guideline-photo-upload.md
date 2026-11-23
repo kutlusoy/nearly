@@ -1,7 +1,7 @@
 # Nearly: Photo Upload Guideline
 
-- **Version:** 0.6 (draft)
-- **Date:** November 22, 2026
+- **Version:** 0.7 (draft)
+- **Date:** November 23, 2026
 - **Audience:** Android developers of Nearly
 - **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/media/` (`PhotoProcessor.kt`, `PhotoGeometry.kt`, `BlurHash.kt`, `PhotoPublisher.kt`, `PhotoBackend.kt`) and `app/src/main/java/com/kutlusoy/nearly/nostr/` (`ImageSanitizer.kt`, `Blossom.kt`, `PhotoTransfer.kt`), chat side in `chat/ChatService.kt`, tests in the matching `src/test` folders
 - **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-decisions.md`](./guideline-decisions.md) rows 1, 7, 8, 32 and 33, [`guideline-chat.md`](./guideline-chat.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), Blossom [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md), [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) and [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md)
@@ -62,9 +62,9 @@ Rules:
 | `PublicPhotoLimitTest` | a file over 400 KB is refused before any request reaches the server |
 | `BlossomDeleteTest` | the delete request with its scoped token, the mapping of every status, route and TLS refusals, the hash check of the input, and the service deleting an uploaded photo |
 | `PhotoUploadTest` | metadata removal from synthetic JPEG and PNG, the upload request with its signed scoped token, fallback to the next server, answer checks, route and size rules, download with hash check, the service from file to a post reference |
-| `PhotoTransferTest` | the chunks of a photo of 1.2 MB stay below 60 KB per wrap, any order and repeats give the same photo, a missing piece or a wrong hash gives nothing, every kind of broken chunk is dropped, the receipt names its transfer |
-| `ChatPhotoTest` | two accounts over a relay in memory: a photo arrives in pieces, the sender sees "Delivered", metadata is removed, a once photo is gone after viewing and the sender keeps no copy, strangers and blocked people are dropped, a file that is no JPEG is thrown away, a failed photo is sent again, at most three open transfers per person, the database keeps photos and pieces |
-| `ChatPhotoUiTest` | progress, the once state, the viewer and the screenshot |
+| `PhotoTransferTest` | the chunks of a photo of 1.2 MB stay below 60 KB per wrap, any order and repeats give the same photo, a missing piece or a wrong hash gives nothing, every kind of broken chunk is dropped, the receipt and the cancel name their transfer |
+| `ChatPhotoTest` | two accounts over a relay in memory: a photo arrives in pieces, the sender sees "Delivered", metadata is removed, a once photo is gone after viewing and the sender keeps no copy, strangers and blocked people are dropped, a file that is no JPEG is thrown away, a failed photo is sent again, a waiting photo leaves only when the sender says so and can be taken back, a photo on the way is cancelled and late pieces are ignored, a photo is replaced, at most three open transfers per person, the database keeps photos and pieces |
+| `ChatPhotoUiTest` | progress, the once state, the viewer and the screenshot, the buttons of a waiting photo |
 
 The photo tests run on the JVM with Robolectric (native graphics), they do not need a phone. The photos in `PhotoProcessorTest` are made from two color bitmaps, not from a real camera. The BlurHash method gives a slight gradient on solid colors, as the reference method does, so those tests check the average.
 
@@ -75,7 +75,7 @@ Not checked: a real camera photo, HEIC and WebP input, a real Blossom server, an
 - **Picker and upload.** The profile editor offers up to six photos in a grid with the system photo picker (images only, no storage permission). `AppViewModel.addPhoto` runs `PhotoBackend.upload` off the main thread (prepare with `PhotoProcessor`, upload with `PhotoUploadService`). While it runs the add cell shows a progress ring, a failure shows a note and changes nothing.
 - **Remove.** `removePhoto` takes the photo out of the profile and the discovery card at once, republishes the card, and then asks the server to delete the file (BUD-12). The note says `removed, also from the server` or, after `Refused` or `Unreachable`, that the server may still hold the file. `Make first` moves a photo to the front, the first photo is the profile picture (`picture` of kind 0, `https` only).
 - **Display.** `RemotePhoto` shows the BlurHash first and the photo when it is loaded. `AppViewModel.loadPhoto` keeps 48 pictures in memory, `PhotoCache` keeps the files on the disk by hash (100 MB, least recently used first, a file name can only be a SHA-256) and at most three downloads run at once. Every download is checked against its hash.
-- **Servers.** `BlossomServers.DEFAULT` holds three public servers as a starting point. They are not checked yet (see the open questions). The photo calls use the same routing rules as the relays through `NetworkLink.router`, so over Tor nothing goes out directly.
+- **Servers.** `BlossomServers.DEFAULT` holds four public servers as a starting point, `blossom.ditto.pub` first. They are not checked yet (see the open questions). The photo calls use the same routing rules as the relays through `NetworkLink.router`, so over Tor nothing goes out directly.
 - **Cards.** The discovery card carries the photos as `imeta` tags (up to six, `https` only), the saved profile keeps them as a checked list.
 
 ## 7. High resolution photos in the chat
@@ -88,7 +88,10 @@ Decision 33: a high resolution photo is never stored on a public Blossom server.
 - **Receiving.** Pieces may come in any order and more than once. When all are there, the hash of the whole is compared, the file must be a JPEG, metadata is removed again, and only then the photo is shown. Anything else is thrown away. A person who may not write to me (policy, block) cannot start a transfer, at most three transfers per person are open, and a partial transfer is removed after three days.
 - **Delivery receipt.** The receiver sends a wrap of kind 24311 with the transfer id when the photo is complete and checked. The sender then shows "Delivered".
 - **View once.** The receiver shows no preview, opens the photo full screen with the screenshot block (`FLAG_SECURE`) and deletes the file when the viewer closes. After the receipt the sender deletes its own copy of a once photo.
-- **Storage.** The finished photo and the pieces live in the chat database of the phone (version 4), they are deleted with the conversation.
+- **Waiting, replace, cancel (built).** With the chip `Direct first` a photo does not leave at once: it stays on the phone with the state `Waiting` and the sender sees three buttons, `Send via relay`, `Replace` and `Cancel`. A direct connection between the phones is not built yet, so today the photo waits until the sender chooses the relays. `Cancel` removes the photo from the phone, and when pieces were already sent a cancel message (kind 24313) goes to the other person: the receiver drops the pieces it has, and pieces that arrive late are ignored. `Replace` takes the old photo back and sends the new one to the same person. A failed photo offers `Send via relay` too.
+- **Storage.** The finished photo and the pieces live in the chat database of the phone (version 5), they are deleted with the conversation.
+
+Open: a direct connection (WebRTC) as the first way. It shows the IP address to the other person and does not work through Tor, so it would be optional and only for matches, with the relays as the fallback. The waiting state above is built for it.
 
 Limits to know: a photo costs about 60 events over Tor and takes time on slow relays, relays may drop pieces (then the photo shows as failed on the sender and can be sent again), and a once photo cannot stop the other person from photographing the screen with another device.
 
@@ -111,6 +114,8 @@ Limits to know: a photo costs about 60 events over Tor and takes time on slow re
 - [x] Photo picker, upload, remove, make first, display with placeholder and cache (tested with a fake backend and a fake server)
 - [x] Public photos small by rule (1080 pixels, 150 KB, refused above 400 KB)
 - [x] High resolution photos in the chat only (chunks over the relays, hash check, delivery receipt, view once), tested with relays in memory
+- [x] Waiting, send via relay, replace and cancel for chat photos
+- [ ] Direct connection between the phones as the first way
 - [ ] High resolution photo between two phones over real relays
 - [ ] Camera in the interface
 - [ ] Test with real camera photos and on a weak phone
@@ -120,6 +125,7 @@ Limits to know: a photo costs about 60 events over Tor and takes time on slow re
 ## 10. Open Questions
 
 1. Which Blossom servers are used at the start, and do they accept uploads over Tor without payment?
-2. The three starting servers of `BlossomServers.DEFAULT` are unchecked: which accept uploads without payment, work through Tor and offer BUD-12?
+2. The four starting servers of `BlossomServers.DEFAULT` are unchecked: which accept uploads without payment, work through Tor and offer BUD-12?
 3. Is 1080 pixels at 150 KB the right size, or should it be even smaller to save Tor bandwidth?
 4. Do the public relays accept about 55 KB wraps and enough of them in a row?
+5. Should the direct connection be offered at all, given that it shows the IP address?
