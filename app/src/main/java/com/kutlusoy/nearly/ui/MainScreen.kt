@@ -104,6 +104,7 @@ fun MainScreen(
     onFollowKey: (String) -> Unit = {},
     onMessageKey: (String) -> Unit = {},
     onSwipe: (String, SwipeDirection) -> Unit = { _, _ -> },
+    onUndo: () -> Unit = {},
 ) {
     val followedKeys = chat.following.map { it.peer }.toSet()
     Scaffold(
@@ -137,6 +138,12 @@ fun MainScreen(
             when (tab) {
                 Tab.Swipe -> Column {
                     if (chat.likeLimit) Text(stringResource(R.string.swipe_limit), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).testTag("like-limit"))
+                    if (chat.undoable != null) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.swipe_liked), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            androidx.compose.material3.TextButton(onClick = onUndo, modifier = Modifier.testTag("undo-swipe")) { Text(stringResource(R.string.swipe_undo)) }
+                        }
+                    }
                     SwipeScreen(
                     people = nearby.people.filter { it.key == null || it.key !in chat.hidden }, filter = discovery, onFilters = onFilters,
                     onSwiped = { person, direction -> person.key?.let { onSwipe(it, direction) } },
