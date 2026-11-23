@@ -42,7 +42,8 @@ object GiftWrap {
     private const val RANDOM_PAST_SECONDS = 2 * 24 * 3600L
     private val random = SecureRandom()
 
-    fun wrap(session: Session, rumor: Rumor, recipientPubkey: String, now: Long = System.currentTimeMillis() / 1000): Event {
+    // With expiresAt the wrap carries an expiration tag (NIP-40), relays that know it drop the wrap then
+    fun wrap(session: Session, rumor: Rumor, recipientPubkey: String, now: Long = System.currentTimeMillis() / 1000, expiresAt: Long? = null): Event {
         require(rumor.pubkey == NostrKeys.toHex(session.publicKey)) { "the rumor must come from the sender" }
         val recipient = NostrKeys.fromHex(recipientPubkey)
         val sealContent = session.useSecretKey { sk ->
@@ -63,7 +64,7 @@ object GiftWrap {
                 key.fill(0)
             }
             val pubkey = NostrKeys.toHex(NostrKeys.publicKey(ephemeral))
-            val tags = listOf(listOf("p", recipientPubkey))
+            val tags = listOf(listOf("p", recipientPubkey)) + listOfNotNull(expiresAt?.let { listOf("expiration", it.toString()) })
             val createdAt = randomPast(now)
             val id = Event.computeId(pubkey, createdAt, KIND_WRAP, tags, wrapContent)
             val sig = Schnorr.sign(NostrKeys.fromHex(id), ephemeral)
