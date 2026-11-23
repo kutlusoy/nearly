@@ -43,6 +43,7 @@ class ChatService(
     private val own = NostrKeys.toHex(session.publicKey)
     private var inbox: AutoCloseable? = null
     private val rejections = HashMap<String, Int>()
+    private val cancelled = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     // Reads the inbox. Wraps carry a random time up to two days in the past, so the filter starts a little earlier than the last sync.
     fun start() {
@@ -94,18 +95,44 @@ class ChatService(
 
     // A photo for one person, cut into chunks and sent one after the other. The photo stays in the store of the sender until
     // it is delivered, a photo that can be seen once is removed then.
-    fun sendPhoto(peer: String, bytes: ByteArray, width: Int, height: Int, once: Boolean): SendResult {
+    // With directFirst the photo waits on this phone until the user sends it through the relays (a direct way is not built yet)
+    fun sendPhoto(peer: String, bytes: ByteArray, width: Int, height: Int, once: Boolean, directFirst: Boolean = false): SendResult {
         if (!isPubkey(peer)) return SendResult.BadPeer
         if (peer == own) return SendResult.ToSelf
         if (bytes.isEmpty() || bytes.size > PhotoTransfer.MAX_BYTES) return SendResult.PhotoTooBig
         val meta = PhotoTransfer.meta(bytes, width, height, once)
         val info = PhotoInfo(meta.transfer, width, height, bytes.size, once, PhotoState.Ready, 0, meta.total)
-        val message = ChatMessage("ph:" + meta.transfer, peer, mine = true, text = "", at = clock(), status = MessageStatus.Sending, photo = info)
+        val message = ChatMessage("ph:" + meta.transfer, peer, mine = true, text = "", at = clock(), status = if (directFirst) MessageStatus.Waiting else MessageStatus.Sending, photo = info)
         store.savePhoto(meta.transfer, bytes)
         store.add(message)
         onChange()
-        background { transmit(message, bytes) }
+        if (!directFirst) background { transmit(message, bytes) }
         return SendResult.Queued(message)
+    }
+
+    // A waiting or failed photo goes out through the relays now
+    fun sendViaRelay(id: String): SendResult {
+        val message = store.message(id)?.takeIf { it.mine && it.photo != null && (it.status == MessageStatus.Waiting || it.status == MessageStatus.Failed) } ?: return SendResult.Empty
+        return retryPhoto(message)
+    }
+
+    // The sender takes the photo back. Pieces that were sent are dropped by the receiver, late pieces are ignored.
+    fun cancelPhoto(id: String): Boolean {
+        val message = store.message(id)?.takeIf { it.mine && it.photo != null && it.status in CANCELABLE } ?: return false
+        val info = message.photo ?: return false
+        cancelled.add(id)
+        store.deletePhoto(info.transfer)
+        store.remove(id)
+        if (message.status != MessageStatus.Waiting) transport.publish(PhotoTransfer.cancel(session, message.peer, info.transfer, clock()))
+        onChange()
+        return true
+    }
+
+    // Takes the old photo back and sends the new one to the same person
+    fun replacePhoto(id: String, bytes: ByteArray, width: Int, height: Int, once: Boolean, directFirst: Boolean = false): SendResult {
+        val peer = store.message(id)?.peer ?: return SendResult.Empty
+        if (!cancelPhoto(id)) return SendResult.Empty
+        return sendPhoto(peer, bytes, width, height, once, directFirst)
     }
 
     private fun retryPhoto(old: ChatMessage): SendResult {
@@ -123,6 +150,7 @@ class ChatService(
         val info = message.photo ?: return
         val meta = PhotoTransfer.meta(bytes, info.width, info.height, info.once, info.transfer)
         for (index in 0 until meta.total) {
+            if (cancelled.remove(message.id)) return
             val wrap = PhotoTransfer.wrapChunk(session, message.peer, meta, index, bytes, clock())
             store.rememberWrap(wrap.id)
             if (!publishAndWait(wrap)) {
@@ -227,6 +255,7 @@ class ChatService(
             DirectMessage.KIND_MESSAGE -> handleText(wrap, rumor)
             PhotoTransfer.KIND_CHUNK -> handleChunk(rumor)
             PhotoTransfer.KIND_RECEIPT -> handleReceipt(rumor)
+            PhotoTransfer.KIND_CANCEL -> handleCancel(rumor)
             Interest.KIND_INTEREST -> handleInterest(rumor)
         }
     }
@@ -272,11 +301,23 @@ class ChatService(
         onChange()
     }
 
+    // The sender took the photo back: the pieces go, and pieces that come late are ignored
+    private fun handleCancel(rumor: com.kutlusoy.nearly.nostr.Rumor) {
+        val transfer = PhotoTransfer.parseCancel(rumor) ?: return
+        if (rumor.pubkey == own || store.isBlocked(rumor.pubkey)) return
+        store.rememberWrap("cancel:$transfer:${rumor.pubkey}")
+        val message = store.message("ph:$transfer")?.takeIf { !it.mine && it.peer == rumor.pubkey && it.photo?.state == PhotoState.Receiving } ?: return
+        store.dropChunks(transfer)
+        store.remove(message.id)
+        onChange()
+    }
+
     private fun handleChunk(rumor: com.kutlusoy.nearly.nostr.Rumor) {
         val sender = rumor.pubkey
         if (sender == own || store.isBlocked(sender)) return
         val chunk = PhotoTransfer.parseChunk(rumor) ?: return
         val meta = chunk.meta
+        if (store.seenWrap("cancel:${meta.transfer}:$sender")) return
         val id = "ph:${meta.transfer}"
         var message = store.message(id)
         if (message == null) {
@@ -347,6 +388,7 @@ class ChatService(
         private const val STALE_TRANSFER = 3 * 24 * 3600L
         const val MAX_OPEN_TRANSFERS = 3
         const val MAX_LIKES_PER_DAY = 100
+        private val CANCELABLE = setOf(MessageStatus.Waiting, MessageStatus.Sending, MessageStatus.Failed)
 
         fun isPubkey(text: String) = text.length == 64 && text.all { it in '0'..'9' || it in 'a'..'f' }
 

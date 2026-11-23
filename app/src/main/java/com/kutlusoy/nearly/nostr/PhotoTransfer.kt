@@ -22,6 +22,7 @@ class PhotoChunk(val meta: PhotoMeta, val index: Int, val data: ByteArray)
 object PhotoTransfer {
     const val KIND_CHUNK = 24310
     const val KIND_RECEIPT = 24311
+    const val KIND_CANCEL = 24313
     const val CHUNK_BYTES = 20_000
     const val MAX_BYTES = 1_200_000
     const val MAX_CHUNKS = (MAX_BYTES + CHUNK_BYTES - 1) / CHUNK_BYTES
@@ -84,6 +85,15 @@ object PhotoTransfer {
         val rumor = Rumor(NostrKeys.toHex(session.publicKey), now, KIND_RECEIPT, listOf(listOf("p", recipient), listOf("i", transfer)), "")
         return GiftWrap.wrap(session, rumor, recipient, now)
     }
+
+    // The sender takes a photo back: the receiver drops the pieces it has
+    fun cancel(session: Session, recipient: String, transfer: String, now: Long = System.currentTimeMillis() / 1000): Event {
+        val rumor = Rumor(NostrKeys.toHex(session.publicKey), now, KIND_CANCEL, listOf(listOf("p", recipient), listOf("i", transfer)), "")
+        return GiftWrap.wrap(session, rumor, recipient, now)
+    }
+
+    fun parseCancel(rumor: Rumor): String? =
+        if (rumor.kind == KIND_CANCEL) rumor.tagValues("i").firstOrNull()?.takeIf { HEX32.matches(it) } else null
 
     fun parseReceipt(rumor: Rumor): String? =
         if (rumor.kind == KIND_RECEIPT) rumor.tagValues("i").firstOrNull()?.takeIf { HEX32.matches(it) } else null
