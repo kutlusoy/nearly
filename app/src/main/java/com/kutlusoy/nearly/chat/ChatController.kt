@@ -199,9 +199,20 @@ class ChatController(
         openConversation(peer)
     }
 
-    fun sendPhoto(bytes: ByteArray, width: Int, height: Int, once: Boolean) {
+    fun sendPhoto(bytes: ByteArray, width: Int, height: Int, once: Boolean, directFirst: Boolean = false, replace: String? = null) {
         val peer = _state.value.openPeer ?: return
-        if (service?.sendPhoto(peer, bytes, width, height, once) == SendResult.PhotoTooBig) _state.update { it.copy(error = ChatError.PhotoTooBig) }
+        val result = if (replace != null) service?.replacePhoto(replace, bytes, width, height, once, directFirst) else service?.sendPhoto(peer, bytes, width, height, once, directFirst)
+        if (result == SendResult.PhotoTooBig) _state.update { it.copy(error = ChatError.PhotoTooBig) }
+        refresh()
+    }
+
+    fun cancelPhoto(id: String) {
+        service?.cancelPhoto(id)
+        refresh()
+    }
+
+    fun sendPhotoViaRelay(id: String) {
+        service?.sendViaRelay(id)
         refresh()
     }
 
