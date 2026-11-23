@@ -4,6 +4,7 @@ import com.kutlusoy.nearly.nostr.DirectMessage
 import com.kutlusoy.nearly.nostr.Event
 import com.kutlusoy.nearly.nostr.GiftWrap
 import com.kutlusoy.nearly.nostr.ImageSanitizer
+import com.kutlusoy.nearly.nostr.Interest
 import com.kutlusoy.nearly.nostr.PhotoAssembler
 import com.kutlusoy.nearly.nostr.PhotoTransfer
 import java.util.concurrent.CountDownLatch
@@ -13,6 +14,8 @@ import com.kutlusoy.nearly.nostr.NostrKeys
 import com.kutlusoy.nearly.nostr.NostrTransport
 import com.kutlusoy.nearly.nostr.ProfileService
 import com.kutlusoy.nearly.nostr.Session
+
+enum class SwipeOutcome { Recorded, Match, Limit, Ignored }
 
 sealed interface SendResult {
     data class Queued(val message: ChatMessage) : SendResult
@@ -35,6 +38,7 @@ class ChatService(
     private val acceptPhotos: (peer: String) -> Boolean = { true },
     private val background: (Runnable) -> Unit = Executors.newSingleThreadExecutor { r -> Thread(r, "photo-send").apply { isDaemon = true } }::execute,
     private val chunkTimeoutSeconds: Long = 30,
+    private val onMatch: (peer: String) -> Unit = {},
 ) {
     private val own = NostrKeys.toHex(session.publicKey)
     private var inbox: AutoCloseable? = null
@@ -219,7 +223,36 @@ class ChatService(
             DirectMessage.KIND_MESSAGE -> handleText(wrap, rumor)
             PhotoTransfer.KIND_CHUNK -> handleChunk(rumor)
             PhotoTransfer.KIND_RECEIPT -> handleReceipt(rumor)
+            Interest.KIND_INTEREST -> handleInterest(rumor)
         }
+    }
+
+    // A signal is only stored, never shown. It matters when the user likes the same person.
+    private fun handleInterest(rumor: com.kutlusoy.nearly.nostr.Rumor) {
+        val sender = rumor.pubkey
+        if (sender == own || store.isBlocked(sender) || !Interest.isInterest(rumor)) return
+        store.addLikeMe(sender, clock())
+        completeMatch(sender)
+    }
+
+    // The decision of the user on a person. A like sends the private signal, at most 100 per day.
+    fun swipe(peer: String, decision: SwipeDecision): SwipeOutcome {
+        if (!isPubkey(peer) || peer == own) return SwipeOutcome.Ignored
+        val now = clock()
+        if (decision == SwipeDecision.Like && store.swipes().values.count { it.first == "like" && now - it.second < 24 * 3600L } >= MAX_LIKES_PER_DAY) return SwipeOutcome.Limit
+        store.setSwipe(peer, decision.name.lowercase(), now)
+        if (decision != SwipeDecision.Like) return SwipeOutcome.Recorded
+        transport.publish(Interest.wrap(session, peer, now))
+        return if (completeMatch(peer)) SwipeOutcome.Match else SwipeOutcome.Recorded
+    }
+
+    // Both phones decide alone: the user liked the person and the person signalled interest
+    private fun completeMatch(peer: String): Boolean {
+        if (store.swipes()[peer]?.first != "like" || !store.likedMe(peer) || store.isBlocked(peer)) return false
+        if (!store.addMatch(peer, clock())) return false
+        onChange()
+        onMatch(peer)
+        return true
     }
 
     private fun handleReceipt(rumor: com.kutlusoy.nearly.nostr.Rumor) {
@@ -309,6 +342,7 @@ class ChatService(
         private const val CHUNK_TRIES = 3
         private const val STALE_TRANSFER = 3 * 24 * 3600L
         const val MAX_OPEN_TRANSFERS = 3
+        const val MAX_LIKES_PER_DAY = 100
 
         fun isPubkey(text: String) = text.length == 64 && text.all { it in '0'..'9' || it in 'a'..'f' }
 

@@ -35,6 +35,9 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val network: NetworkStatus = NetworkStatus(),
     val error: ChatError? = null,
+    val hidden: Set<String> = emptySet(),
+    val match: ContactUi? = null,
+    val likeLimit: Boolean = false,
 )
 
 // Connects the network, the chat service and the screens: opens with the account, closes with the sign out
@@ -56,7 +59,7 @@ class ChatController(
         val key = NostrKeys.toHex(session.publicKey).take(16)
         val chatStore = storeFor(key)
         store = chatStore
-        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onIncoming = { message ->
+        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) } }, onIncoming = { message ->
             if (_state.value.openPeer == message.peer) {
                 chatStore.markRead(message.peer)
                 refresh()
@@ -177,6 +180,21 @@ class ChatController(
         refresh()
     }
 
+    // The swipe of the user. A match opens the match screen, the chat of the pair is visible whatever the policy says.
+    fun swipe(peer: String, decision: SwipeDecision) {
+        val outcome = service?.swipe(peer, decision) ?: return
+        _state.update { it.copy(likeLimit = outcome == SwipeOutcome.Limit) }
+        refresh()
+    }
+
+    fun dismissMatch() = _state.update { it.copy(match = null) }
+
+    fun messageMatch() {
+        val peer = _state.value.match?.peer ?: return
+        _state.update { it.copy(match = null) }
+        openConversation(peer)
+    }
+
     fun sendPhoto(bytes: ByteArray, width: Int, height: Int, once: Boolean) {
         val peer = _state.value.openPeer ?: return
         if (service?.sendPhoto(peer, bytes, width, height, once) == SendResult.PhotoTooBig) _state.update { it.copy(error = ChatError.PhotoTooBig) }
@@ -207,8 +225,9 @@ class ChatController(
         val chatStore = store ?: return
         chatStore.setBlocked(peer, true)
         chatStore.setFollowed(peer, false)
+        chatStore.removeMatch(peer)
         chatStore.deleteConversation(peer)
-        _state.update { it.copy(openPeer = null, profile = null, messages = emptyList(), openName = "", error = null) }
+        _state.update { it.copy(match = null, openPeer = null, profile = null, messages = emptyList(), openName = "", error = null) }
         refresh()
     }
 
@@ -242,14 +261,21 @@ class ChatController(
                 requests = requests,
                 unread = visible.sumOf { c -> c.unread },
                 messages = messages,
+                hidden = hiddenKeys(chatStore),
                 openName = if (open != null) displayName(chatStore, open) else "",
             )
         }
     }
 
-    // A person who wrote to me stays visible when I follow the person, or when I wrote first
+    // A person who wrote to me stays visible when I follow the person, when we matched, or when I wrote first
     private fun isVisible(chatStore: ChatStore, peer: String, followed: Set<String>): Boolean =
-        policy == MessagePolicy.Everyone || peer in followed || chatStore.messages(peer).any { it.mine }
+        policy == MessagePolicy.Everyone || peer in followed || peer in chatStore.matches() || chatStore.messages(peer).any { it.mine }
+
+    // People who are out of the deck: decided on, or blocked
+    private fun hiddenKeys(chatStore: ChatStore): Set<String> {
+        val now = System.currentTimeMillis() / 1000
+        return chatStore.swipes().filter { (_, v) -> Swipes.hides(v.first, v.second, now) }.keys
+    }
 
     private fun contact(chatStore: ChatStore, peer: String): ContactUi {
         val profile = chatStore.peerProfile(peer)
