@@ -87,6 +87,7 @@ fun PersonDetail(
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(person.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("  ${person.age}", style = MaterialTheme.typography.headlineSmall)
+                        if (person.extras.pronouns.isNotBlank()) Text("  ${person.extras.pronouns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Place, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
@@ -122,6 +123,7 @@ fun PersonDetail(
                     person.job?.let { Text(stringResource(R.string.detail_job, it), style = MaterialTheme.typography.bodyMedium) }
                     person.city?.let { Text(stringResource(R.string.detail_lives_in, it), style = MaterialTheme.typography.bodyMedium) }
                     if (person.languages.isNotEmpty()) Text(stringResource(R.string.detail_speaks, person.languages.joinToString(", ")), style = MaterialTheme.typography.bodyMedium)
+                    ExtrasBlock(person.extras)
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     Section(R.string.detail_interests)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

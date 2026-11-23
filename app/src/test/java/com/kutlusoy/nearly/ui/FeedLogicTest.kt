@@ -62,8 +62,8 @@ class MyProfileTest {
     fun theCompletenessGrowsWithTheFields() {
         assertEquals(0, MyProfile().completeness())
         val p = MyProfile(about = "Hi", gender = Gender.Woman, interests = listOf("Tea"), languages = setOf("English"))
-        assertEquals(40, p.completeness())
+        assertEquals(28, p.completeness())
         val all = p.copy(lookingFor = LookingFor.Serious, job = "x", school = "y", city = "z", heightCm = 170, drinking = Frequency.Never)
-        assertEquals(100, all.completeness())
+        assertEquals(71, all.completeness())
     }
 }
