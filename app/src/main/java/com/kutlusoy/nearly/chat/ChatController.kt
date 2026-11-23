@@ -38,6 +38,7 @@ data class ChatUiState(
     val hidden: Set<String> = emptySet(),
     val match: ContactUi? = null,
     val likeLimit: Boolean = false,
+    val undoable: String? = null,
 )
 
 // Connects the network, the chat service and the screens: opens with the account, closes with the sign out
@@ -187,7 +188,19 @@ class ChatController(
     // The swipe of the user. A match opens the match screen, the chat of the pair is visible whatever the policy says.
     fun swipe(peer: String, decision: SwipeDecision) {
         val outcome = service?.swipe(peer, decision) ?: return
-        _state.update { it.copy(likeLimit = outcome == SwipeOutcome.Limit) }
+        _state.update { it.copy(likeLimit = outcome == SwipeOutcome.Limit, undoable = if (outcome == SwipeOutcome.Pending) peer else null) }
+        if (outcome == SwipeOutcome.Pending) scope.launch {
+            kotlinx.coroutines.delay(ChatService.UNDO_SECONDS * 1000)
+            _state.update { if (it.undoable == peer) it.copy(undoable = null) else it }
+        }
+        refresh()
+    }
+
+    // Takes the last like back while its signal has not left
+    fun undoSwipe() {
+        val peer = _state.value.undoable ?: return
+        service?.undoSwipe(peer)
+        _state.update { it.copy(undoable = null) }
         refresh()
     }
 
