@@ -107,6 +107,9 @@ fun EditProfileScreen(
                     minLines = 3,
                     maxLines = 6,
                 )
+                if (hasContactData(profile.about) || profile.prompts.any { hasContactData(it.a) }) {
+                    Text(stringResource(R.string.edit_contact_warning), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp).testTag("contact-warning"))
+                }
                 Divider()
 
                 Header(R.string.edit_i_am)
@@ -218,6 +221,9 @@ fun EditProfileScreen(
                 Frequencies(R.string.edit_drinking, profile.drinking) { onChange(profile.copy(drinking = it)) }
                 Frequencies(R.string.edit_smoking, profile.smoking) { onChange(profile.copy(smoking = it)) }
                 Frequencies(R.string.edit_exercise, profile.exercise) { onChange(profile.copy(exercise = it)) }
+                Divider()
+
+                ExtrasSection(profile, onChange)
                 Spacer(Modifier.height(24.dp))
             }
         }
