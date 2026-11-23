@@ -5,7 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-enum class MessageStatus { Sending, Sent, Failed, Received, Delivered }
+enum class MessageStatus { Sending, Sent, Failed, Received, Delivered, Waiting }
 
 enum class PhotoState { Receiving, Ready, Gone }
 
