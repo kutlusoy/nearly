@@ -10,8 +10,9 @@ import java.io.File
 import java.io.InputStream
 
 // Public Blossom servers for the first tests. They are NOT checked: each has to accept uploads without payment and has to work through Tor.
+// The first one that accepts is used, the others are the fallback.
 object BlossomServers {
-    val DEFAULT = listOf("https://blossom.primal.net", "https://blossom.band", "https://nostr.download")
+    val DEFAULT = listOf("https://blossom.ditto.pub", "https://blossom.primal.net", "https://blossom.band", "https://nostr.download")
 }
 
 // Everything the app does with photo files: prepare and upload, delete, load. All calls block, run them off the main thread.
