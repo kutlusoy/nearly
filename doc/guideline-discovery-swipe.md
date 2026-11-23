@@ -1,6 +1,6 @@
 # Nearly: Discovery and Swipe Guideline
 
-- **Version:** 0.3 (draft)
+- **Version:** 0.4 (draft)
 - **Date:** November 23, 2026
 - **Audience:** Product, design and Android developers of Nearly
 - **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/nostr/` (`DiscoveryCard.kt`, `Geohash.kt`, `Interest.kt`), `discovery/` (`NearbyController.kt`, `AndroidAreaSource.kt`), `ui/` (`SwipeScreen.kt`, `PersonDetail.kt`, `FeedScreen.kt`, `DiscoveryFilter.kt`, `MatchDialog.kt`), `chat/` (`ChatService.swipe`, `ChatStore`), tests `DiscoveryCardTest.kt`, `NearbyTest.kt`, `MatchTest.kt` and `SqliteMatchTest.kt`.
@@ -14,7 +14,7 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 
 The swipe mode shows one person at a time, as Tinder does. This guideline covers where the people come from, how the deck is built, what a swipe does, how a match comes about without a server, and which settings exist.
 
-Built: the screens, the filter with its rules, the profile view with a photo carousel, the discovery card (publish, hide, read by cell, checks), the approximate place from the phone (permission prompt), the deck from real people of the area, follow and message from the full view, and `People near you` in the feed. A card without a photo shows a colour gradient with the first letter, a photo is not required yet. Photos: the card carries up to six photos and the screens show them (the editor uploads them, see [`guideline-photo-upload.md`](./guideline-photo-upload.md)). Stored decisions with their return times, the private interest signal, the match on both phones with the match dialog, the open chat after a match and the limit of 100 likes per day are built too. Missing: undo, the lifestyle fields in the card.
+Built: the screens, the filter with its rules, the profile view with a photo carousel, the discovery card (publish, hide, read by cell, checks), the approximate place from the phone (permission prompt), the deck from real people of the area, follow and message from the full view, and `People near you` in the feed. A card without a photo shows a colour gradient with the first letter, a photo is not required yet. Photos: the card carries up to six photos and the screens show them (the editor uploads them, see [`guideline-photo-upload.md`](./guideline-photo-upload.md)). Stored decisions with their return times, the private interest signal, the match on both phones with the match dialog, the open chat after a match, the limit of 100 likes per day, the undo of a like and the block button in the full view are built too. The lifestyle fields live in the card extras, see [`guideline-profile-details.md`](./guideline-profile-details.md).
 
 ## 2. The discovery card
 
@@ -62,14 +62,14 @@ An empty deck shows the reason (no card in the area, filters too narrow, offline
 | up | arrow | skip, no signal | after 30 days |
 
 - Decisions are stored on the device (`swipes`: key, decision, time) and are part of nothing that is published. The deck leaves out a person for the time in the table (`Swipes.hides`).
-- **Undo (SHOULD, not built yet).** The last swipe can be taken back for 8 seconds. A signal is sent only after that time, so undo does not need to recall anything. Today the signal leaves at once.
-- **Look before the swipe (MUST).** A tap on the card opens the full view: all photos with the left and right tap zones and the page dots, all fields, the way back by one tap. Report and block are in the menu of the full view.
+- **Undo (built).** A like can be taken back for 8 seconds (`ChatService.UNDO_SECONDS`). The signal is sent only after that time, so undo does not need to recall anything. The swipe screen shows `Liked` with an `Undo` button meanwhile. When the person already liked first, the match is set at once and nothing waits. A pending like is sent when the app stops. An undone decision is stored as `undone` and does not hide the person.
+- **Look before the swipe (MUST).** A tap on the card opens the full view: all photos with the left and right tap zones and the page dots, all fields, the way back by one tap. Block is a button of the full view with a confirmation (built). Report needs the consent flow of [`guideline-safety-moderation.md`](./guideline-safety-moderation.md) and is not built yet.
 - Follow is a separate button and not part of the swipe.
 - **Rate.** At most 100 interest signals per day (`ChatService.MAX_LIKES_PER_DAY`). A line above the card says `no more likes today` when it is reached.
 
 ## 6. Interest and match without a server
 
-- **Signal.** An interest is a **rumor of its own kind** (24312, outside kind 14, so chat clients ignore it) with `content` `{"v":1,"t":"interest"}` and a `p` tag of the person, sealed and wrapped as in NIP-17 and NIP-59 for the person only. An `expiration` of 30 days on the wrap is still to do. The chat code switches on the kind of the rumor (`ChatService.handle`), so a signal never reaches the chat.
+- **Signal.** An interest is a **rumor of its own kind** (24312, outside kind 14, so chat clients ignore it) with `content` `{"v":1,"t":"interest"}` and a `p` tag of the person, sealed and wrapped as in NIP-17 and NIP-59 for the person only. The wrap carries an `expiration` tag of 30 days (NIP-40). The chat code switches on the kind of the rumor (`ChatService.handle`), so a signal never reaches the chat.
 - **Receiving.** A signal is stored as `likes_me` (key, time) and is **never shown**: no list, no counter, no notification. Only a swipe of the user decides. At most 5000 entries are kept, blocked keys and repeats are ignored.
 - **Match.** When the user swipes right on a person who is in `likes_me`, or a signal arrives from a person the user swiped right on, both entries meet and the match is set on the device. Both phones decide on their own, no third message is needed. The person who completes the match sees `It's a match` at once, the other phone shows it when its signal arrives and the app is open.
 - **After the match.** The chat of the pair is visible whatever `who can write to me` says (`matches` joins follows and own messages in `ChatController.isVisible`), and the profiles stay open for both.
@@ -82,18 +82,19 @@ Built in `DiscoveryFilter`: show me (women, men, non binary people, at least one
 
 ## 8. Tests
 
-Built: card encode and parse with bad data, expiry and cell rules, the nine cell cover, the service with a fake relay including hiding and another area, two phones finding each other through one fake relay, the profile fields in the card, hide and block removing a person, the swipe, follow and message with a real person, the permission prompt, and the feed row. `MatchTest` (two accounts over a relay in memory): a signal alone shows nothing, both likes make a match on both phones, the order does not matter and it happens once, skip and not now send nothing, a blocked person never matches, 100 likes per day, the signal has its own kind, the return times. `SqliteMatchTest`: the tables and the limit of 5000 signals. To write: deck order with a fake clock, undo before the signal leaves.
+Built: card encode and parse with bad data, expiry and cell rules, the nine cell cover, the service with a fake relay including hiding and another area, two phones finding each other through one fake relay, the profile fields in the card, hide and block removing a person, the swipe, follow and message with a real person, the permission prompt, and the feed row. `MatchTest` (two accounts over a relay in memory): a signal alone shows nothing, both likes make a match on both phones, the order does not matter and it happens once, skip and not now send nothing, a blocked person never matches, 100 likes per day, the signal has its own kind, the return times. `SqliteMatchTest`: the tables and the limit of 5000 signals. Undo before the signal leaves, undo after it left, and the expiration tag are covered too. To write: deck order with a fake clock.
 
 ## 9. Checklist
 
 - [x] Screens, filter and deck rules
-- [x] Card event, publish, hide and refresh at every profile change (the weekly refresh is still to do)
+- [x] Card event, publish, hide and refresh at every profile change and at every start of the app
 - [x] Query by cells, defensive parsing (the local cache is still to do)
 - [x] Real people in swipe and in `People near you`, follow and message
 - [x] Stored decisions and return times
-- [ ] Undo of the last swipe
+- [x] Undo of the last like (8 seconds)
 - [x] Interest signal and match, chat opens (tested with relays in memory, not yet between two phones)
-- [ ] Report and block from the full view
+- [x] Block from the full view
+- [ ] Report from the full view (needs consent, NIP-56)
 - [x] Photos in the card (up to six `imeta` tags, shown in the card, the detail view and the feed row)
 
 ## 10. Open Questions
