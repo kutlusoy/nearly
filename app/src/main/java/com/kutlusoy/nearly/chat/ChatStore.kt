@@ -26,6 +26,18 @@ data class ChatMessage(val id: String, val peer: String, val mine: Boolean, val 
 // What is known about another person from the public profile on the relays
 data class PeerProfile(val name: String, val about: String = "", val age: Int? = null)
 
+enum class SwipeDecision { Like, Later, Skip }
+
+// How long a swiped person stays out of the deck: a like for good, "not now" for a week, a skip for a month
+object Swipes {
+    fun hides(decision: String, at: Long, now: Long): Boolean = when (decision) {
+        "like" -> true
+        "later" -> now - at < 7 * 24 * 3600L
+        "skip" -> now - at < 30 * 24 * 3600L
+        else -> false
+    }
+}
+
 data class Conversation(val peer: String, val last: ChatMessage, val unread: Int)
 
 // Where the chats of one account live on the phone
@@ -44,6 +56,15 @@ interface ChatStore {
     fun savePhoto(transfer: String, bytes: ByteArray)
     fun photoBytes(transfer: String): ByteArray?
     fun deletePhoto(transfer: String)
+
+    // Swipe decisions, the people who signalled interest in me (never shown), and the matches
+    fun setSwipe(peer: String, decision: String, at: Long)
+    fun swipes(): Map<String, Pair<String, Long>>
+    fun addLikeMe(peer: String, at: Long): Boolean
+    fun likedMe(peer: String): Boolean
+    fun addMatch(peer: String, at: Long): Boolean
+    fun matches(): List<String>
+    fun removeMatch(peer: String)
     fun messages(peer: String): List<ChatMessage>
     fun message(id: String): ChatMessage?
     fun conversations(): List<Conversation>
@@ -72,7 +93,7 @@ interface ChatStore {
 }
 
 class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
-    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 4) {
+    private val helper = object : SQLiteOpenHelper(context.applicationContext, "chat-$accountKey.db", null, 5) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE messages (id TEXT PRIMARY KEY, peer TEXT NOT NULL, mine INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL, read INTEGER NOT NULL, attachment TEXT)")
             db.execSQL("CREATE TABLE chunks (transfer TEXT NOT NULL, idx INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (transfer, idx))")
@@ -82,6 +103,9 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
             db.execSQL("CREATE TABLE peers (peer TEXT PRIMARY KEY, name TEXT NOT NULL, about TEXT NOT NULL DEFAULT '', age INTEGER NOT NULL DEFAULT -1)")
             db.execSQL("CREATE TABLE followed (peer TEXT PRIMARY KEY)")
             db.execSQL("CREATE TABLE blocked (peer TEXT PRIMARY KEY)")
+            db.execSQL("CREATE TABLE swipes (peer TEXT PRIMARY KEY, decision TEXT NOT NULL, at INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE likes_me (peer TEXT PRIMARY KEY, at INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE matches (peer TEXT PRIMARY KEY, at INTEGER NOT NULL)")
             db.execSQL("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         }
 
@@ -96,6 +120,11 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
                 db.execSQL("ALTER TABLE messages ADD COLUMN attachment TEXT")
                 db.execSQL("CREATE TABLE IF NOT EXISTS chunks (transfer TEXT NOT NULL, idx INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (transfer, idx))")
                 db.execSQL("CREATE TABLE IF NOT EXISTS photos (transfer TEXT PRIMARY KEY, data BLOB NOT NULL)")
+            }
+            if (oldVersion < 5) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS swipes (peer TEXT PRIMARY KEY, decision TEXT NOT NULL, at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS likes_me (peer TEXT PRIMARY KEY, at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS matches (peer TEXT PRIMARY KEY, at INTEGER NOT NULL)")
             }
         }
     }
@@ -161,6 +190,37 @@ class SqliteChatStore(context: Context, accountKey: String) : ChatStore {
     @Synchronized
     override fun deletePhoto(transfer: String) {
         db.delete("photos", "transfer = ?", arrayOf(transfer))
+    }
+
+    @Synchronized
+    override fun setSwipe(peer: String, decision: String, at: Long) {
+        db.insertWithOnConflict("swipes", null, ContentValues().apply { put("peer", peer); put("decision", decision); put("at", at) }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    @Synchronized
+    override fun swipes(): Map<String, Pair<String, Long>> =
+        db.rawQuery("SELECT peer, decision, at FROM swipes", null).use { c -> buildMap { while (c.moveToNext()) put(c.getString(0), c.getString(1) to c.getLong(2)) } }
+
+    @Synchronized
+    override fun addLikeMe(peer: String, at: Long): Boolean {
+        val added = db.insertWithOnConflict("likes_me", null, ContentValues().apply { put("peer", peer); put("at", at) }, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+        if (added) db.execSQL("DELETE FROM likes_me WHERE peer NOT IN (SELECT peer FROM likes_me ORDER BY at DESC LIMIT 5000)")
+        return added
+    }
+
+    @Synchronized
+    override fun likedMe(peer: String): Boolean = db.rawQuery("SELECT 1 FROM likes_me WHERE peer = ?", arrayOf(peer)).use { it.moveToFirst() }
+
+    @Synchronized
+    override fun addMatch(peer: String, at: Long): Boolean =
+        db.insertWithOnConflict("matches", null, ContentValues().apply { put("peer", peer); put("at", at) }, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+
+    @Synchronized
+    override fun matches(): List<String> = db.rawQuery("SELECT peer FROM matches ORDER BY at", null).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    @Synchronized
+    override fun removeMatch(peer: String) {
+        db.delete("matches", "peer = ?", arrayOf(peer))
     }
 
     @Synchronized
