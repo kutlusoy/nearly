@@ -10,6 +10,7 @@ import com.kutlusoy.nearly.chat.ChatController
 import com.kutlusoy.nearly.chat.ChatStore
 import com.kutlusoy.nearly.chat.MessagePolicy
 import com.kutlusoy.nearly.chat.SqliteChatStore
+import com.kutlusoy.nearly.chat.SwipeDecision
 import com.kutlusoy.nearly.discovery.AndroidAreaSource
 import com.kutlusoy.nearly.discovery.AreaSource
 import com.kutlusoy.nearly.discovery.NearbyController
@@ -131,6 +132,19 @@ class AppViewModel @JvmOverloads constructor(
     }
 
     fun refreshArea() = nearby.refreshArea()
+
+    fun swipe(key: String, direction: SwipeDirection) = chat.swipe(
+        key,
+        when (direction) {
+            SwipeDirection.Like -> SwipeDecision.Like
+            SwipeDirection.Later -> SwipeDecision.Later
+            SwipeDirection.Skip -> SwipeDecision.Skip
+        },
+    )
+
+    fun dismissMatch() = chat.dismissMatch()
+
+    fun messageMatch() = chat.messageMatch()
 
     fun toggleFollowKey(key: String) {
         val followed = _state.value.chat.following.any { it.peer == key }
