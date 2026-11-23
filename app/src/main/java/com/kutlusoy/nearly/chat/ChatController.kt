@@ -89,6 +89,10 @@ class ChatController(
         service?.publishProfile(name, about, age, picture)
     }
 
+    fun clearProfile() {
+        service?.clearProfile()
+    }
+
     fun setMode(mode: NetworkMode) {
         link.start(mode)
     }
