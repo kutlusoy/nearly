@@ -66,8 +66,10 @@ fun SettingsScreen(
     onMessagePolicy: (MessagePolicy) -> Unit = {},
     blockedCount: Int = 0,
     onBlocked: () -> Unit = {},
+    onDeleteAccount: () -> Unit = {},
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     BackHandler(onBack = onBack)
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -153,7 +155,23 @@ fun SettingsScreen(
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                 Text(stringResource(R.string.profile_sign_out), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 8.dp))
             }
+            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).testTag("delete-account")) {
+                Text(stringResource(R.string.settings_delete_account), color = MaterialTheme.colorScheme.error)
+            }
         }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.delete_title)) },
+            text = { Text(stringResource(R.string.delete_text)) },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDeleteAccount() }, modifier = Modifier.testTag("delete-confirm")) {
+                    Text(stringResource(R.string.delete_confirm), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.delete_cancel)) } },
+        )
     }
     if (confirmSignOut) {
         AlertDialog(
