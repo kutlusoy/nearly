@@ -100,4 +100,6 @@
     <string name="photo_replace">Replace</string>
     <string name="photo_cancel">Cancel</string>
     <string name="photo_direct_toggle">Direct first</string>
+    <string name="swipe_liked">Liked. The signal leaves in a few seconds.</string>
+    <string name="swipe_undo">Undo</string>
 </resources>

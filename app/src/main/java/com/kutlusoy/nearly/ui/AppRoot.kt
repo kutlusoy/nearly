@@ -26,7 +26,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         activity?.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
     }
     NearlyTheme(dark = dark) {
-        CompositionLocalProvider(LocalPhotoLoader provides viewModel::loadPhoto) {
+        CompositionLocalProvider(LocalPhotoLoader provides viewModel::loadPhoto, LocalBlockPerson provides viewModel::block) {
             when (state.screen) {
                 Screen.Welcome -> WelcomeScreen(onCreate = viewModel::openRegistration, onSignIn = { viewModel.show(Screen.SignIn) })
                 Screen.Registration -> RegistrationScreen(
@@ -150,6 +150,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onFollowKey = viewModel::toggleFollowKey,
                             onMessageKey = viewModel::messagePerson,
                             onSwipe = viewModel::swipe,
+                            onUndo = viewModel::undoSwipe,
                         )
                     }
                     state.chat.match?.let { match -> MatchDialog(match.name, onMessage = viewModel::messageMatch, onLater = viewModel::dismissMatch) }
