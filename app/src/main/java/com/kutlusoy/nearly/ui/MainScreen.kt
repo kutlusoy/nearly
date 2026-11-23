@@ -103,6 +103,7 @@ fun MainScreen(
     onAllowLocation: () -> Unit = {},
     onFollowKey: (String) -> Unit = {},
     onMessageKey: (String) -> Unit = {},
+    onSwipe: (String, SwipeDirection) -> Unit = { _, _ -> },
 ) {
     val followedKeys = chat.following.map { it.peer }.toSet()
     Scaffold(
@@ -134,11 +135,15 @@ fun MainScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                Tab.Swipe -> SwipeScreen(
-                    people = nearby.people, filter = discovery, onFilters = onFilters,
+                Tab.Swipe -> Column {
+                    if (chat.likeLimit) Text(stringResource(R.string.swipe_limit), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).testTag("like-limit"))
+                    SwipeScreen(
+                    people = nearby.people.filter { it.key == null || it.key !in chat.hidden }, filter = discovery, onFilters = onFilters,
+                    onSwiped = { person, direction -> person.key?.let { onSwipe(it, direction) } },
                     needsLocation = !nearby.permission || nearby.cell == null, onAllowLocation = onAllowLocation,
                     followed = followedKeys, onFollowPerson = onFollowKey, onMessagePerson = onMessageKey,
-                )
+                    )
+                }
                 Tab.Feed -> FeedScreen(people = nearby.people, following = followedKeys, onFollow = onFollowKey)
                 Tab.Profile -> ProfileTab(account, profile, chat.following.size, onSettings, onEditProfile, onOpenFollowing)
                 Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings, onFollowRequest = onFollowRequest, onDeleteRequest = onDeleteRequest, onBlockRequest = onBlockRequest)

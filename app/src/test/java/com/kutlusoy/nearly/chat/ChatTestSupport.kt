@@ -82,6 +82,17 @@ class MemoryChatStore : ChatStore {
     private val pieces = HashMap<String, java.util.TreeMap<Int, ByteArray>>()
     private val files = HashMap<String, ByteArray>()
 
+    private val swipeRows = HashMap<String, Pair<String, Long>>()
+    private val likeRows = LinkedHashSet<String>()
+    private val matchRows = LinkedHashSet<String>()
+    override fun setSwipe(peer: String, decision: String, at: Long) { swipeRows[peer] = decision to at }
+    override fun swipes(): Map<String, Pair<String, Long>> = swipeRows.toMap()
+    override fun addLikeMe(peer: String, at: Long) = likeRows.add(peer)
+    override fun likedMe(peer: String) = peer in likeRows
+    override fun addMatch(peer: String, at: Long) = matchRows.add(peer)
+    override fun matches() = matchRows.toList()
+    override fun removeMatch(peer: String) { matchRows.remove(peer) }
+
     override fun setPhoto(id: String, photo: PhotoInfo) { rows[id]?.let { rows[id] = it.copy(photo = photo) } }
     override fun setRead(id: String, read: Boolean) { rows[id]?.let { rows[id] = it.copy(read = read) } }
     override fun addChunk(transfer: String, index: Int, data: ByteArray): Boolean {
