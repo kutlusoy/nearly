@@ -1,9 +1,9 @@
 # Nearly: Profile Details Guideline
 
-- **Version:** 0.1 (draft)
-- **Date:** November 22, 2026
+- **Version:** 0.2 (draft)
+- **Date:** November 23, 2026
 - **Audience:** Product, design and Android developers of Nearly
-- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/ui/` (`MyProfile.kt`, `EditProfileScreen.kt`, `MainScreen.kt` profile tab, `PersonDetail.kt`, `ContactScreens.kt`), `nostr/Profile.kt`, `nostr/DiscoveryCard.kt`, `media/PhotoBackend.kt`. The fields are kept on the device and published in the discovery card, the name, text, age and first photo also in kind 0.
+- **Reference implementation:** `app/src/main/java/com/kutlusoy/nearly/ui/` (`MyProfile.kt`, `ProfileExtras.kt`, `EditProfileScreen.kt`, `MainScreen.kt` profile tab, `PersonDetail.kt`, `ContactScreens.kt`), `nostr/Profile.kt`, `nostr/DiscoveryCard.kt`, `media/PhotoBackend.kt`. The fields are kept on the device and published in the discovery card, the name, text, age and first photo also in kind 0.
 - **See also:** [`guideline-profile-posts-follows.md`](./guideline-profile-posts-follows.md), [`guideline-discovery-swipe.md`](./guideline-discovery-swipe.md), [`guideline-photo-upload.md`](./guideline-photo-upload.md), [`guideline-stay-signed-in.md`](./guideline-stay-signed-in.md), [`guideline-safety-moderation.md`](./guideline-safety-moderation.md)
 
 Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
@@ -30,6 +30,14 @@ Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **M
 | Job, school, city | free text, shortened | card | |
 | Height | 100 to 250 cm | card | |
 | Drinking, smoking, exercise | never, sometimes, often | card | |
+| Pronouns | 20 characters | card | |
+| Orientation | straight, gay, lesbian, bisexual, asexual, pansexual, other | card | |
+| Family plans | want, do not want, have, not sure | card | |
+| Zodiac sign | the twelve signs | card | |
+| Diet | eats everything, vegetarian, vegan, pescatarian, other | card | |
+| School, pets | 60 and 40 characters | card | |
+| Link | 80 characters of letters, digits and `@._:/#?=&%~+-`, shown as text, never tappable | card | |
+| Prompts | up to 3 answers (140 characters) to a fixed list of 10 questions | card | |
 | Photos | up to 6 in the card, the first is the profile picture | kind 0 `picture`, card `imeta` | |
 
 Rules:
@@ -37,8 +45,11 @@ Rules:
 - **Nothing is mandatory except name and age (MUST).** Every other field can stay empty and is then not published. The completeness hint is advice only.
 - **City is free text (MUST NOT be parsed as a place).** It is a label. The place of the card comes only from the location of the phone and is a cell, see [`guideline-discovery-swipe.md`](./guideline-discovery-swipe.md). A user who types a different city than the cell shows the label, nothing else changes.
 - **Text is cleaned (MUST):** control characters removed, white space collapsed, links are shown as text. About may not contain an address or phone number check, but the edit screen warns once when it sees a phone number or an e-mail address pattern.
-- **Publishing.** Every save writes kind 0 and the discovery card. Both are replaceable, the newest wins. The app reads the own events at sign in and keeps newer data from another device instead of overwriting it blindly (same care as with follows).
-- **Hidden fields.** Each field has an eye: hidden fields are not written to the card. Gender and looking for are needed for filters, hiding them makes the person invisible to filters that ask for them, the screen says so.
+- **Publishing.** Every save writes kind 0 and the discovery card. Both are replaceable, the newest wins.
+- **New phone (built).** When the local profile is empty after the sign in, the newest own card is read from the relays and the profile is built from it (`DiscoveryService.loadOwn`, `MyProfile.fromCard`). Fields that were hidden are not in the card and stay empty. A profile that already has content is never overwritten.
+- **Hidden fields (built).** The edit screen lists every field except the text and the photos as a chip `Hide ...`. A hidden field is not written to the card (`MyProfile.cardExtras` and the card snapshot). Gender and looking for are needed for filters, hiding them makes the person invisible to filters that ask for them, the screen says so.
+- **Foreign cards (MUST).** Every new field is checked on its own: codes must be in the allowed set, numbers in range, text cleaned and shortened, prompts need a known question and a non empty answer, a bad value is dropped and the rest of the card stays.
+- **Contact data warning (built).** A phone number or an e-mail address in the text or in an answer shows a warning (`hasContactData`).
 
 ## 3. Photos
 
@@ -58,11 +69,11 @@ Rules:
 
 - Settings show the user name, the age, the short ID, the version and the sign out. `Back up your account` shows the user name, e-mail, five words, `npub` and `nsec` only after a confirmation, hidden by default, copy buttons clear the clipboard after one minute (SHOULD).
 - The user stays signed in until the sign out (see [`guideline-stay-signed-in.md`](./guideline-stay-signed-in.md)). The sign out asks once and deletes the sealed login.
-- **Delete account (to build).** Deleting an identity on Nostr is not possible. The option publishes empty kind 0 and card events, a deletion request for the posts, removes all local data and signs out. The screen says what remains on relays.
+- **Delete account (built).** Deleting an identity on Nostr is not possible. `Settings, Delete account` (with a confirmation) hides the card, publishes an empty kind 0 (`{}`) and a deletion request (kind 5, NIP-09) for the card, waits four seconds so the relays get the events, removes the chat database and the profile on the phone, and signs out. The screen says that relays may keep copies. Posts do not exist yet, their deletion request is still to do.
 
 ## 6. Tests
 
-To write: field limits and cleaning, the warning for phone numbers, hidden fields leaving the card, publish and read round trip of kind 0 and the card, no overwrite of newer events from another device, the first photo as profile picture, no card without a photo, the delete account flow.
+Built: `CardExtrasTest` (facts travel in the card, bad values dropped one by one, the own card is read again, the deletion request), `ProfileFieldsTest` (every field kept on the phone, hidden fields not in the card, empty answers stay home, the profile built from the card, prompt rules, the link characters, the contact data pattern, the completeness hint), `ProfileCompleteTest` (the edit screen with a screenshot, facts shown to others, hiding changes the card, a new phone gets the profile back, the account deletion). To write: no overwrite of newer data from another device, the first photo as profile picture.
 
 ## 7. Checklist
 
@@ -70,12 +81,15 @@ To write: field limits and cleaning, the warning for phone numbers, hidden field
 - [x] Profile view with the photo carousel, real people from the cards
 - [x] Publish kind 0 (with the first photo as picture) and the card after every change
 - [x] Photo picker, upload, remove, make first (crop and drag order are still to do)
-- [ ] Hidden fields
-- [ ] Read of the own events at sign in
-- [ ] Delete account
+- [x] Hidden fields
+- [x] Read of the own card at sign in (empty profile only)
+- [x] Delete account
+- [x] Pronouns, orientation, family plans, zodiac sign, diet, pets, link, prompts
+- [ ] Crop, camera and the order of photos by dragging
+- [ ] Verified photo badge
 
 ## 8. Open Questions
 
 1. Exact age or a range in the public profile (decision record, open)?
-2. Are the lifestyle fields (drinking, smoking, exercise) kept, or too much for a first version?
+2. Orientation is sensitive: is it kept optional and hideable as built, or dropped?
 3. Is a verified photo badge (a pose check on the device) wanted later?
