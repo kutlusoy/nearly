@@ -177,6 +177,8 @@ class AppViewModel @JvmOverloads constructor(
         },
     )
 
+    fun undoSwipe() = chat.undoSwipe()
+
     fun dismissMatch() = chat.dismissMatch()
 
     fun messageMatch() = chat.messageMatch()
