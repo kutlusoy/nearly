@@ -69,7 +69,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onBack = viewModel::closeChat,
                             onProfile = { state.chat.openPeer?.let(viewModel::openProfile) },
                             loadPhoto = viewModel::chatPhoto,
-                            onSendPhoto = { uri, once -> viewModel.sendChatPhoto({ context.contentResolver.openInputStream(uri) ?: throw java.io.IOException("cannot open") }, once) },
+                            onSendPhoto = { uri, once, direct, replace -> viewModel.sendChatPhoto({ context.contentResolver.openInputStream(uri) ?: throw java.io.IOException("cannot open") }, once, direct, replace) },
+                            onCancelPhoto = viewModel::cancelChatPhoto,
+                            onPhotoViaRelay = viewModel::sendChatPhotoViaRelay,
                             onPhotoViewed = viewModel::chatPhotoViewed,
                         )
                     } else if (state.followingOpen) {
