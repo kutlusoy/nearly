@@ -111,5 +111,9 @@ fun messagePreview(message: ChatMessage): String = if (message.photo != null) st
 @Composable
 fun photoFooter(message: ChatMessage): String? {
     val info = message.photo ?: return null
-    return if (message.mine && message.status == MessageStatus.Sending) stringResource(R.string.message_sending_photo, info.have, info.total) else null
+    return when {
+        message.mine && message.status == MessageStatus.Sending -> stringResource(R.string.message_sending_photo, info.have, info.total)
+        message.mine && message.status == MessageStatus.Waiting -> stringResource(R.string.message_waiting_photo)
+        else -> null
+    }
 }

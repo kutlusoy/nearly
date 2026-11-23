@@ -61,15 +61,21 @@ fun ConversationScreen(
     now: Long = System.currentTimeMillis() / 1000,
     onProfile: () -> Unit = {},
     loadPhoto: (String) -> ByteArray? = { null },
-    onSendPhoto: (android.net.Uri, Boolean) -> Unit = { _, _ -> },
+    onSendPhoto: (android.net.Uri, Boolean, Boolean, String?) -> Unit = { _, _, _, _ -> },
     onPhotoViewed: (String) -> Unit = {},
+    onCancelPhoto: (String) -> Unit = {},
+    onPhotoViaRelay: (String) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     var once by remember { mutableStateOf(false) }
+    var direct by remember { mutableStateOf(false) }
+    var replacing by remember { mutableStateOf<String?>(null) }
     var viewing by remember { mutableStateOf<String?>(null) }
     val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) onSendPhoto(uri, once)
+        if (uri != null) onSendPhoto(uri, once, direct, replacing)
+        replacing = null
     }
+    val pick = { picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) }
     var text by remember { mutableStateOf("") }
     val list = rememberLazyListState()
     LaunchedEffect(messages.size) {
@@ -104,7 +110,7 @@ fun ConversationScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         )
                     }
-                    items(messages, key = { it.id }) { message -> Bubble(message, now, loadPhoto, onOpen = { viewing = message.id }) { onRetry(message.id) } }
+                    items(messages, key = { it.id }) { message -> Bubble(message, now, loadPhoto, onOpen = { viewing = message.id }, onCancel = { onCancelPhoto(message.id) }, onViaRelay = { onPhotoViaRelay(message.id) }, onReplace = { replacing = message.id; pick() }) { onRetry(message.id) } }
                 }
             }
             if (error == ChatError.PhotoTooBig) {
@@ -114,7 +120,7 @@ fun ConversationScreen(
                 Text(stringResource(R.string.conversation_too_long), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp))
             }
             Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = { picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.testTag("attach-photo")) {
+                IconButton(onClick = { replacing = null; pick() }, modifier = Modifier.testTag("attach-photo")) {
                     Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.photo_attach), tint = MaterialTheme.colorScheme.primary)
                 }
                 androidx.compose.material3.FilterChip(
@@ -122,6 +128,12 @@ fun ConversationScreen(
                     onClick = { once = !once },
                     label = { Text(stringResource(R.string.photo_once_toggle)) },
                     modifier = Modifier.padding(bottom = 8.dp).testTag("once-toggle"),
+                )
+                androidx.compose.material3.FilterChip(
+                    selected = direct,
+                    onClick = { direct = !direct },
+                    label = { Text(stringResource(R.string.photo_direct_toggle)) },
+                    modifier = Modifier.padding(bottom = 8.dp).testTag("direct-toggle"),
                 )
                 OutlinedTextField(
                     value = text,
@@ -155,7 +167,7 @@ fun ConversationScreen(
 }
 
 @Composable
-private fun Bubble(message: ChatMessage, now: Long, load: (String) -> ByteArray?, onOpen: () -> Unit, onRetry: () -> Unit) {
+private fun Bubble(message: ChatMessage, now: Long, load: (String) -> ByteArray?, onOpen: () -> Unit, onCancel: () -> Unit, onViaRelay: () -> Unit, onReplace: () -> Unit, onRetry: () -> Unit) {
     val mine = message.mine
     val photo = message.photo
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
@@ -172,6 +184,13 @@ private fun Bubble(message: ChatMessage, now: Long, load: (String) -> ByteArray?
                 .padding(horizontal = 14.dp, vertical = 9.dp),
         ) {
             Text(message.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+        }
+        if (photo != null && mine && (message.status == MessageStatus.Waiting || message.status == MessageStatus.Sending || message.status == MessageStatus.Failed)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (message.status != MessageStatus.Sending) androidx.compose.material3.TextButton(onClick = onViaRelay, modifier = Modifier.testTag("photo-relay")) { Text(stringResource(R.string.photo_via_relay)) }
+                androidx.compose.material3.TextButton(onClick = onReplace, modifier = Modifier.testTag("photo-replace")) { Text(stringResource(R.string.photo_replace)) }
+                androidx.compose.material3.TextButton(onClick = onCancel, modifier = Modifier.testTag("photo-cancel")) { Text(stringResource(R.string.photo_cancel)) }
+            }
         }
         val footer = when {
             !mine -> formatTime(message.at, now)
