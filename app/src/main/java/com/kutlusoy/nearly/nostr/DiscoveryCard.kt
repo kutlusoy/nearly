@@ -12,6 +12,26 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
+// An answer to one of the fixed questions of the profile
+data class CardPrompt(val q: Int, val a: String)
+
+// The facts beyond the basics. Every value is optional, codes are the lower case names of the enums of the profile.
+data class CardExtras(
+    val pronouns: String = "",
+    val school: String = "",
+    val height: Int? = null,
+    val drinking: String? = null,
+    val smoking: String? = null,
+    val exercise: String? = null,
+    val orientation: String? = null,
+    val family: String? = null,
+    val zodiac: String? = null,
+    val diet: String? = null,
+    val pets: String = "",
+    val link: String = "",
+    val prompts: List<CardPrompt> = emptyList(),
+)
+
 // What a person shows in swipe and feed: the profile for strangers, with a coarse place
 data class DiscoveryCard(
     val pubkey: String,
@@ -27,6 +47,7 @@ data class DiscoveryCard(
     val interests: List<String>,
     val cell: String,
     val photos: List<PhotoRef> = emptyList(),
+    val extras: CardExtras = CardExtras(),
 )
 
 // What the own phone writes into a card
@@ -42,6 +63,7 @@ data class CardData(
     val interests: List<String> = emptyList(),
     val cell: String,
     val photos: List<PhotoRef> = emptyList(),
+    val extras: CardExtras = CardExtras(),
 )
 
 // An addressable event (kind 30078, NIP-78) with the tags nearly and g. Foreign cards are checked like every foreign event.
@@ -62,6 +84,20 @@ object CardCodec {
     private val GENDERS = setOf("w", "m", "x")
     private val GOALS = setOf("serious", "open", "casual", "fun", "friends", "unsure")
     private val LANGUAGE = Regex("[a-z]{2,3}")
+    private val FREQUENCIES = setOf("never", "sometimes", "often")
+    private val ORIENTATIONS = setOf("straight", "gay", "lesbian", "bisexual", "asexual", "pansexual", "other")
+    private val FAMILY = setOf("want", "dont", "have", "unsure")
+    private val ZODIAC = setOf("aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces")
+    private val DIETS = setOf("omnivore", "vegetarian", "vegan", "pescatarian", "other")
+    private val LINK = Regex("[A-Za-z0-9@._:/#?=&%~+-]{1,80}")
+    const val MAX_PRONOUNS = 20
+    const val MAX_PETS = 40
+    const val MAX_LINK = 80
+    const val MAX_PROMPTS = 3
+    const val PROMPT_COUNT = 10
+    const val MAX_PROMPT_ANSWER = 140
+    const val MIN_HEIGHT = 100
+    const val MAX_HEIGHT = 250
 
     fun create(session: Session, data: CardData, now: Long = System.currentTimeMillis() / 1000): Event {
         require(Geohash.isCell(data.cell, CELL_LENGTH)) { "the cell needs $CELL_LENGTH characters" }
@@ -84,6 +120,24 @@ object CardCodec {
             put("city", data.city.take(MAX_TEXT))
             put("about", data.about.take(MAX_ABOUT))
             put("interests", buildJsonArray { data.interests.take(MAX_INTERESTS).forEach { add(JsonPrimitive(it)) } })
+            val x = data.extras
+            if (x.pronouns.isNotBlank()) put("pro", x.pronouns.take(MAX_PRONOUNS))
+            if (x.school.isNotBlank()) put("school", x.school.take(MAX_TEXT))
+            x.height?.let { put("height", it) }
+            x.drinking?.let { put("drink", it) }
+            x.smoking?.let { put("smoke", it) }
+            x.exercise?.let { put("ex", it) }
+            x.orientation?.let { put("ori", it) }
+            x.family?.let { put("fam", it) }
+            x.zodiac?.let { put("zod", it) }
+            x.diet?.let { put("diet", it) }
+            if (x.pets.isNotBlank()) put("pets", x.pets.take(MAX_PETS))
+            if (x.link.isNotBlank()) put("link", x.link.take(MAX_LINK))
+            if (x.prompts.isNotEmpty()) {
+                put("prompts", buildJsonArray {
+                    x.prompts.take(MAX_PROMPTS).forEach { add(buildJsonObject { put("q", it.q); put("a", it.a.take(MAX_PROMPT_ANSWER)) }) }
+                })
+            }
         }.toString()
         return Event.sign(session, KIND, content, tags, now)
     }
@@ -128,6 +182,33 @@ object CardCodec {
             interests = (o["interests"] as? JsonArray).orEmpty().mapNotNull { clean(it.text(), 24).takeIf { s -> s.isNotBlank() } }.distinct().take(MAX_INTERESTS),
             cell = cell,
             photos = PostCodec.parseImeta(event, MAX_PHOTOS),
+            extras = parseExtras(o),
+        )
+    }
+
+    // Each value is checked on its own, a bad one is dropped and the rest of the card stays
+    private fun parseExtras(o: JsonObject): CardExtras {
+        fun code(name: String, allowed: Set<String>) = o[name]?.text()?.takeIf { it in allowed }
+        val prompts = (o["prompts"] as? JsonArray).orEmpty().mapNotNull { element ->
+            val p = element as? JsonObject ?: return@mapNotNull null
+            val q = (p["q"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0 until PROMPT_COUNT } ?: return@mapNotNull null
+            val a = clean(p["a"]?.text(), MAX_PROMPT_ANSWER, keepNewlines = true).takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            CardPrompt(q, a)
+        }.distinctBy { it.q }.take(MAX_PROMPTS)
+        return CardExtras(
+            pronouns = clean(o["pro"]?.text(), MAX_PRONOUNS),
+            school = clean(o["school"]?.text(), MAX_TEXT),
+            height = (o["height"] as? JsonPrimitive)?.intOrNull?.takeIf { it in MIN_HEIGHT..MAX_HEIGHT },
+            drinking = code("drink", FREQUENCIES),
+            smoking = code("smoke", FREQUENCIES),
+            exercise = code("ex", FREQUENCIES),
+            orientation = code("ori", ORIENTATIONS),
+            family = code("fam", FAMILY),
+            zodiac = code("zod", ZODIAC),
+            diet = code("diet", DIETS),
+            pets = clean(o["pets"]?.text(), MAX_PETS),
+            link = clean(o["link"]?.text(), MAX_LINK).takeIf { LINK.matches(it) } ?: "",
+            prompts = prompts,
         )
     }
 
@@ -147,6 +228,34 @@ class DiscoveryService(private val transport: NostrTransport, private val sessio
         CardCodec.create(session, data, now).also { transport.publish(it) }
 
     fun hide(cell: String, now: Long = System.currentTimeMillis() / 1000): Event = CardCodec.hide(session, cell, now).also { transport.publish(it) }
+
+    // The newest own card, to restore the profile on a new phone. Gives null when there is none or it was hidden.
+    fun loadOwn(onResult: (DiscoveryCard?) -> Unit) {
+        val own = NostrKeys.toHex(session.publicKey)
+        var newest: Event? = null
+        var done = false
+        var subscription: AutoCloseable? = null
+        subscription = transport.subscribe(
+            listOf(Filter(kinds = listOf(CardCodec.KIND), authors = listOf(own), tags = mapOf("d" to listOf(CardCodec.D)), limit = 5)),
+            { event -> if (event.pubkey == own) newest = Replaceable.newest(listOfNotNull(newest, event)) },
+            {
+                if (!done) {
+                    done = true
+                    onResult(newest?.let { CardCodec.parse(it) })
+                    subscription?.close()
+                }
+            },
+        )
+        if (done) subscription.close()
+    }
+
+    // Asks the relays to delete the card (NIP-09) and empties the public profile, used when the account is deleted
+    fun deleteRequest(now: Long = System.currentTimeMillis() / 1000): Event {
+        val own = NostrKeys.toHex(session.publicKey)
+        val event = Event.sign(session, 5, "", listOf(listOf("a", "${CardCodec.KIND}:$own:${CardCodec.D}")), now)
+        transport.publish(event)
+        return event
+    }
 
     // Keeps the subscription open. The caller keeps the newest event of a key: a card, or null when the person hid the card.
     fun watch(cells: List<String>, onEvent: (event: Event, card: DiscoveryCard?) -> Unit): AutoCloseable =
