@@ -15,7 +15,7 @@ import com.kutlusoy.nearly.nostr.NostrTransport
 import com.kutlusoy.nearly.nostr.ProfileService
 import com.kutlusoy.nearly.nostr.Session
 
-enum class SwipeOutcome { Recorded, Match, Limit, Ignored }
+enum class SwipeOutcome { Recorded, Pending, Match, Limit, Ignored }
 
 sealed interface SendResult {
     data class Queued(val message: ChatMessage) : SendResult
@@ -39,11 +39,13 @@ class ChatService(
     private val background: (Runnable) -> Unit = Executors.newSingleThreadExecutor { r -> Thread(r, "photo-send").apply { isDaemon = true } }::execute,
     private val chunkTimeoutSeconds: Long = 30,
     private val onMatch: (peer: String) -> Unit = {},
+    private val later: (delaySeconds: Long, task: Runnable) -> AutoCloseable = defaultLater,
 ) {
     private val own = NostrKeys.toHex(session.publicKey)
     private var inbox: AutoCloseable? = null
     private val rejections = HashMap<String, Int>()
     private val cancelled = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val pendingLikes = java.util.concurrent.ConcurrentHashMap<String, AutoCloseable>()
 
     // Reads the inbox. Wraps carry a random time up to two days in the past, so the filter starts a little earlier than the last sync.
     fun start() {
@@ -63,6 +65,7 @@ class ChatService(
     }
 
     fun stop() {
+        pendingLikes.keys.toList().forEach { peer -> pendingLikes.remove(peer)?.let { it.close(); sendInterest(peer) } }
         inbox?.close()
         inbox = null
     }
@@ -273,10 +276,34 @@ class ChatService(
         if (!isPubkey(peer) || peer == own) return SwipeOutcome.Ignored
         val now = clock()
         if (decision == SwipeDecision.Like && store.swipes().values.count { it.first == "like" && now - it.second < 24 * 3600L } >= MAX_LIKES_PER_DAY) return SwipeOutcome.Limit
+        pendingLikes.remove(peer)?.close()
         store.setSwipe(peer, decision.name.lowercase(), now)
         if (decision != SwipeDecision.Like) return SwipeOutcome.Recorded
-        transport.publish(Interest.wrap(session, peer, now))
-        return if (completeMatch(peer)) SwipeOutcome.Match else SwipeOutcome.Recorded
+        // When the other person liked first the match is set at once. Otherwise the signal waits a few seconds so the like can be taken back.
+        if (store.likedMe(peer)) {
+            sendInterest(peer)
+            return if (completeMatch(peer)) SwipeOutcome.Match else SwipeOutcome.Recorded
+        }
+        pendingLikes[peer] = later(UNDO_SECONDS) {
+            if (pendingLikes.remove(peer) != null) {
+                sendInterest(peer)
+                completeMatch(peer)
+            }
+        }
+        return SwipeOutcome.Pending
+    }
+
+    // The last like is taken back as long as its signal has not left
+    fun undoSwipe(peer: String): Boolean {
+        val handle = pendingLikes.remove(peer) ?: return false
+        handle.close()
+        store.setSwipe(peer, "undone", 0)
+        onChange()
+        return true
+    }
+
+    private fun sendInterest(peer: String) {
+        transport.publish(Interest.wrap(session, peer, clock()))
     }
 
     // Both phones decide alone: the user liked the person and the person signalled interest
@@ -388,6 +415,13 @@ class ChatService(
         private const val STALE_TRANSFER = 3 * 24 * 3600L
         const val MAX_OPEN_TRANSFERS = 3
         const val MAX_LIKES_PER_DAY = 100
+        const val UNDO_SECONDS = 8L
+
+        private val scheduler by lazy { java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "like-later").apply { isDaemon = true } } }
+        private val defaultLater: (Long, Runnable) -> AutoCloseable = { seconds, task ->
+            val future = scheduler.schedule(task, seconds, TimeUnit.SECONDS)
+            AutoCloseable { future.cancel(false) }
+        }
         private val CANCELABLE = setOf(MessageStatus.Waiting, MessageStatus.Sending, MessageStatus.Failed)
 
         fun isPubkey(text: String) = text.length == 64 && text.all { it in '0'..'9' || it in 'a'..'f' }
