@@ -90,4 +90,9 @@
     <string name="photo_once_toggle">View once</string>
     <string name="photo_too_big">This photo is too big for the chat.</string>
     <string name="photo_close">Close</string>
+    <string name="match_title">It\'s a match</string>
+    <string name="match_text">You and %1$s like each other. You can write now.</string>
+    <string name="match_message">Say hello</string>
+    <string name="match_later">Later</string>
+    <string name="swipe_limit">No more likes today. Come back tomorrow.</string>
 </resources>

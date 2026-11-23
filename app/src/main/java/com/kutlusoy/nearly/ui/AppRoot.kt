@@ -146,8 +146,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onAllowLocation = viewModel::refreshArea,
                             onFollowKey = viewModel::toggleFollowKey,
                             onMessageKey = viewModel::messagePerson,
+                            onSwipe = viewModel::swipe,
                         )
                     }
+                    state.chat.match?.let { match -> MatchDialog(match.name, onMessage = viewModel::messageMatch, onLater = viewModel::dismissMatch) }
                 }
             }
         }
