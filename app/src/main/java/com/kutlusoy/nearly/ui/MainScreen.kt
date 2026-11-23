@@ -207,6 +207,7 @@ private fun ProfileTab(account: AccountInfo, profile: MyProfile, followingCount:
                     profile.interests.forEach { SuggestionChip(onClick = {}, label = { Text(it) }) }
                 }
             }
+            ExtrasBlock(profile.cardExtras(), Modifier.padding(top = 6.dp))
             Text(shortId(account.npub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         }
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
