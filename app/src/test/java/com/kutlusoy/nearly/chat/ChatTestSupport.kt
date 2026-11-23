@@ -13,10 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 
 // One relay in memory that everybody talks to, with the filter rules of NIP-01
 class FakeRelay(var answers: Int = 1, var accept: Boolean = true) : NostrTransport {
-    val events = mutableListOf<Event>()
+    val events: MutableList<Event> = java.util.concurrent.CopyOnWriteArrayList()
     private class Sub(val filters: List<Filter>, val onEvent: (Event) -> Unit)
 
-    private val subs = mutableListOf<Sub>()
+    private val subs = java.util.concurrent.CopyOnWriteArrayList<Sub>()
 
     override fun publish(event: Event, onResult: ((String, Boolean, String) -> Unit)?) {
         if (accept) {
@@ -28,8 +28,8 @@ class FakeRelay(var answers: Int = 1, var accept: Boolean = true) : NostrTranspo
 
     override fun subscribe(filters: List<Filter>, onEvent: (Event) -> Unit, onEose: () -> Unit): AutoCloseable {
         val sub = Sub(filters, onEvent)
-        events.toList().filter { e -> filters.any { matches(it, e) } }.forEach(onEvent)
         subs.add(sub)
+        events.toList().filter { e -> filters.any { matches(it, e) } }.forEach(onEvent)
         onEose()
         return AutoCloseable { subs.remove(sub) }
     }

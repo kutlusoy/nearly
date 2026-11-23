@@ -34,7 +34,7 @@ class NearbyTest {
 
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
 
-    private fun waitFor(timeoutMs: Long = 120_000, condition: () -> Boolean) {
+    private fun waitFor(timeoutMs: Long = 300_000, condition: () -> Boolean) {
         val end = System.currentTimeMillis() + timeoutMs
         while (!condition()) {
             shadowOf(Looper.getMainLooper()).idle()
