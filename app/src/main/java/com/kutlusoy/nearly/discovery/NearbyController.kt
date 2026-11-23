@@ -65,6 +65,7 @@ class NearbyController(
         val interests: List<String>,
         val visible: Boolean,
         val photos: List<PhotoRef> = emptyList(),
+        val extras: com.kutlusoy.nearly.nostr.CardExtras = com.kutlusoy.nearly.nostr.CardExtras(),
     )
 
     fun open(opened: Session) {
@@ -103,6 +104,19 @@ class NearbyController(
         }
     }
 
+    // Reads the own card from the relays, to fill the profile on a new phone
+    fun restoreOwn(onCard: (DiscoveryCard) -> Unit) {
+        service?.loadOwn { card -> if (card != null) onCard(card) }
+    }
+
+    // The card is hidden and the relays are asked to delete it
+    fun deleteCard() {
+        val svc = service ?: return
+        _state.value.cell?.let { svc.hide(it, maxOf(clock(), lastPublished + 1)) }
+        svc.deleteRequest(clock())
+        pending = null
+    }
+
     fun setRadius(km: Int) {
         if (km == radiusKm) return
         radiusKm = km
@@ -138,7 +152,7 @@ class NearbyController(
                 name = s.name, age = age,
                 gender = s.gender?.let { GENDER_CODE.getValue(it) },
                 looking = s.looking?.let { it.name.lowercase() },
-                languages = s.languages, job = s.job, city = s.city, about = s.about, interests = s.interests, cell = cell, photos = s.photos,
+                languages = s.languages, job = s.job, city = s.city, about = s.about, interests = s.interests, cell = cell, photos = s.photos, extras = s.extras,
             ),
             at,
         )
@@ -179,6 +193,8 @@ class NearbyController(
             "fi" to "Suomi", "cs" to "Čeština", "ro" to "Română", "hu" to "Magyar", "el" to "Ελληνικά", "ru" to "Русский", "uk" to "Українська",
         )
 
+        fun languageName(code: String): String? = LANGUAGE_NAMES[code]
+
         fun languageCode(name: String): String? = LANGUAGE_NAMES.entries.firstOrNull { it.value == name }?.key
 
         // A card as a person for the swipe deck and the feed. Without photos the card gets two colors that follow from the key.
@@ -206,6 +222,7 @@ class NearbyController(
                 key = card.pubkey,
                 genderKnown = gender != null,
                 photoRefs = card.photos,
+                extras = card.extras,
             )
         }
     }

@@ -22,6 +22,7 @@ data class Person(
     val key: String? = null,
     val genderKnown: Boolean = true,
     val photoRefs: List<com.kutlusoy.nearly.nostr.PhotoRef> = emptyList(),
+    val extras: com.kutlusoy.nearly.nostr.CardExtras = com.kutlusoy.nearly.nostr.CardExtras(),
 )
 
 // The picture of one photo slot, until photos are loaded every slot has its own gradient
