@@ -102,6 +102,8 @@ android {
             all {
                 // The screenshot tests write their pictures to app/build/screenshots
                 systemProperty 'roborazzi.test.record', 'true'
+                // Argon2 takes 64 MiB per key and the tests keep many accounts: the default of 512 MB makes a runner crawl
+                maxHeapSize = '2g'
             }
         }
     }
