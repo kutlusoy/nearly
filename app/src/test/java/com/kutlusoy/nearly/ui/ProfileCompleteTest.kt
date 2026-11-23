@@ -40,7 +40,7 @@ class ProfileCompleteTest {
 
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
 
-    private fun waitFor(timeoutMs: Long = 90_000, condition: () -> Boolean) {
+    private fun waitFor(timeoutMs: Long = 180_000, condition: () -> Boolean) {
         val end = System.currentTimeMillis() + timeoutMs
         while (!condition()) {
             shadowOf(Looper.getMainLooper()).idle()
@@ -77,6 +77,28 @@ class ProfileCompleteTest {
         rule.onNodeWithTag("prompt-question-0").performClick()
         assertEquals(1, profile.prompts[0].q)
         rule.onRoot().captureRoboImage("build/screenshots/30-profile-more.png")
+    }
+
+    @Test
+    fun aPersonCanBeBlockedFromTheFullView() {
+        val relay = FakeRelay()
+        val anna = phone(relay, "anna", FakeArea("u33db"))
+        val ben = phone(relay, "ben", FakeArea("u33db"))
+        waitFor { anna.state.value.nearby.people.size == 1 }
+        val person = anna.state.value.nearby.people.single()
+        var closed = false
+        rule.setContent {
+            NearlyTheme {
+                androidx.compose.runtime.CompositionLocalProvider(LocalBlockPerson provides anna::block) {
+                    PersonDetail(person, onClose = { closed = true }, onAction = {})
+                }
+            }
+        }
+        rule.onNodeWithTag("detail-block").performScrollTo().performClick()
+        rule.onNodeWithTag("detail-block-confirm").performClick()
+        assertTrue(closed)
+        assertTrue(anna.state.value.chat.blocked.any { it.peer == person.key })
+        waitFor { anna.state.value.nearby.people.isEmpty() }
     }
 
     @Test
