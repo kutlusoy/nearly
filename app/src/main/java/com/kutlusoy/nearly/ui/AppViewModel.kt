@@ -209,13 +209,18 @@ class AppViewModel @JvmOverloads constructor(
 
     fun chatPhotoViewed(id: String) = chat.photoViewed(id)
 
-    // A high resolution photo for the open chat: prepared here, then sent in pieces through the relays
-    fun sendChatPhoto(open: () -> InputStream, once: Boolean) {
+    // A high resolution photo for the open chat: prepared here, then sent in pieces through the relays.
+    // With directFirst it waits on the phone until the user sends it through the relays, with replace it takes the old photo back.
+    fun sendChatPhoto(open: () -> InputStream, once: Boolean, directFirst: Boolean = false, replace: String? = null) {
         viewModelScope.launch {
             val prepared = runCatching { withContext(Dispatchers.IO) { chatPhotoProcessor.process(open) } }.getOrNull()
-            if (prepared == null) chat.reportPhotoTooBig() else chat.sendPhoto(prepared.jpeg, prepared.width, prepared.height, once)
+            if (prepared == null) chat.reportPhotoTooBig() else chat.sendPhoto(prepared.jpeg, prepared.width, prepared.height, once, directFirst, replace)
         }
     }
+
+    fun cancelChatPhoto(id: String) = chat.cancelPhoto(id)
+
+    fun sendChatPhotoViaRelay(id: String) = chat.sendPhotoViaRelay(id)
 
     fun openFollowing(open: Boolean) = _state.update { it.copy(followingOpen = open) }
 

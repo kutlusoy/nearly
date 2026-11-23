@@ -95,4 +95,9 @@
     <string name="match_message">Say hello</string>
     <string name="match_later">Later</string>
     <string name="swipe_limit">No more likes today. Come back tomorrow.</string>
+    <string name="message_waiting_photo">Waiting. Send it through the relays or take it back.</string>
+    <string name="photo_via_relay">Send via relay</string>
+    <string name="photo_replace">Replace</string>
+    <string name="photo_cancel">Cancel</string>
+    <string name="photo_direct_toggle">Direct first</string>
 </resources>
