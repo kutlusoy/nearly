@@ -34,6 +34,8 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +47,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.ui.theme.NearlyColors
+
+// Where a block from the full view goes. It is set by the app, a screen without it shows no block button.
+val LocalBlockPerson = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }
 
 // The whole profile, opened from the card before anyone decides: photos, about, what the person looks for, interests
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
@@ -58,6 +63,21 @@ fun PersonDetail(
     onMessage: (() -> Unit)? = null,
 ) {
     BackHandler(onBack = onClose)
+    val block = LocalBlockPerson.current
+    var confirmBlock by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (confirmBlock && block != null && person.key != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmBlock = false },
+            title = { Text(stringResource(R.string.block_confirm)) },
+            text = { Text(stringResource(R.string.block_help)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmBlock = false; block(person.key); onClose() }, modifier = Modifier.testTag("detail-block-confirm")) {
+                    Text(stringResource(R.string.block_action), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { confirmBlock = false }) { Text(stringResource(R.string.newchat_cancel)) } },
+        )
+    }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -111,6 +131,11 @@ fun PersonDetail(
                                     Text(stringResource(if (followed) R.string.feed_following else R.string.feed_follow))
                                 }
                             }
+                        }
+                    }
+                    if (block != null && person.key != null) {
+                        androidx.compose.material3.TextButton(onClick = { confirmBlock = true }, modifier = Modifier.testTag("detail-block")) {
+                            Text(stringResource(R.string.block_action), color = MaterialTheme.colorScheme.error)
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
