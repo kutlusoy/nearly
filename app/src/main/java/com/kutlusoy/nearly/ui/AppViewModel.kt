@@ -113,6 +113,38 @@ class AppViewModel @JvmOverloads constructor(
         nearby.open(opened)
         nearby.setRadius(radius(_state.value.discovery))
         publishCard()
+        restoreProfile()
+    }
+
+    // A new phone has an empty profile: it is filled from the own card on the relays
+    private fun restoreProfile() {
+        if (_state.value.profile.completeness() != 0) return
+        nearby.restoreOwn { card ->
+            val current = _state.value.profile
+            if (current.completeness() == 0) updateProfile(MyProfile.fromCard(card, current))
+        }
+    }
+
+    // The card and the public profile are emptied and the relays are asked to delete them, then everything on this phone goes
+    fun deleteAccount() {
+        val opened = session ?: return
+        if (_state.value.busy) return
+        _state.update { it.copy(busy = true) }
+        nearby.deleteCard()
+        chat.clearProfile()
+        val key = NostrKeys.toHex(opened.publicKey).take(16)
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(DELETE_GRACE_MS)
+            chat.close()
+            nearby.close()
+            getApplication<Application>().deleteDatabase("chat-$key.db")
+            val theme = prefs.getString(KEY_THEME, null)
+            prefs.edit().clear().apply { theme?.let { putString(KEY_THEME, it) } }.apply()
+            saved.clear()
+            session?.lock()
+            session = null
+            _state.update { AppState(themeMode = it.themeMode, networkMode = it.networkMode) }
+        }
     }
 
     private fun radius(filter: DiscoveryFilter) = if (filter.furtherAway) filter.maxDistanceKm * 2 else filter.maxDistanceKm
@@ -124,9 +156,12 @@ class AppViewModel @JvmOverloads constructor(
         val p = s.profile
         nearby.publish(
             NearbyController.CardSnapshot(
-                name = account.username, age = account.age, gender = p.gender, looking = p.lookingFor,
-                languages = p.languages.mapNotNull { NearbyController.languageCode(it) }, job = p.job, city = p.city,
-                about = p.about, interests = p.interests, visible = s.discovery.visible, photos = p.photos,
+                name = account.username, age = account.age,
+                gender = p.gender.takeUnless { p.isHidden(ProfileField.Gender) }, looking = p.lookingFor.takeUnless { p.isHidden(ProfileField.Looking) },
+                languages = if (p.isHidden(ProfileField.Languages)) emptyList() else p.languages.mapNotNull { NearbyController.languageCode(it) },
+                job = if (p.isHidden(ProfileField.Job)) "" else p.job, city = if (p.isHidden(ProfileField.City)) "" else p.city,
+                about = p.about, interests = if (p.isHidden(ProfileField.Interests)) emptyList() else p.interests,
+                visible = s.discovery.visible, photos = p.photos, extras = p.cardExtras(),
             ),
         )
     }
@@ -413,5 +448,6 @@ class AppViewModel @JvmOverloads constructor(
         const val KEY_THEME = "theme"
         const val KEY_NETWORK = "network.mode"
         const val KEY_POLICY = "message.policy"
+        const val DELETE_GRACE_MS = 4000L
     }
 }

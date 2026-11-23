@@ -122,6 +122,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onMessagePolicy = viewModel::setMessagePolicy,
                             blockedCount = state.chat.blocked.size,
                             onBlocked = { viewModel.openBlocked(true) },
+                            onDeleteAccount = viewModel::deleteAccount,
                         )
                     } else {
                         MainScreen(
