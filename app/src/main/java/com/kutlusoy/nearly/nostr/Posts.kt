@@ -73,6 +73,15 @@ object PostCodec {
     fun reaction(session: Session, target: Event, content: String = "+", createdAt: Long = now()): Event =
         Event.sign(session, KIND_REACTION, content, listOf(listOf("e", target.id), listOf("p", target.pubkey), listOf("k", target.kind.toString())), createdAt)
 
+    const val KIND_DELETE = 5
+
+    // NIP-09 deletion request for own events. Relays may keep the events, so the screens say `requested`.
+    fun deletion(session: Session, targets: List<Event>, createdAt: Long = now()): Event =
+        Event.sign(session, KIND_DELETE, "", targets.map { listOf("e", it.id) } + targets.map { it.kind }.distinct().map { listOf("k", it.toString()) }, createdAt)
+
+    fun deletionOf(session: Session, id: String, kind: Int, createdAt: Long = now()): Event =
+        Event.sign(session, KIND_DELETE, "", listOf(listOf("e", id), listOf("k", kind.toString())), createdAt)
+
     fun parse(event: Event): Post? = when (event.kind) {
         KIND_TEXT -> Post.Text(
             event.id, event.pubkey, event.createdAt, event.content.take(MAX_TEXT),

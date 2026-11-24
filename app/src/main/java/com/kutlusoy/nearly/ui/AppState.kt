@@ -3,6 +3,7 @@ package com.kutlusoy.nearly.ui
 import com.kutlusoy.nearly.chat.ChatUiState
 import com.kutlusoy.nearly.chat.MessagePolicy
 import com.kutlusoy.nearly.discovery.NearbyState
+import com.kutlusoy.nearly.feed.FeedUiState
 import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.theme.ThemeMode
@@ -16,6 +17,9 @@ enum class AppError { SignInFailed, AccountExists, Generic }
 
 // What the photo screen tells the user after an upload or a removal
 enum class PhotoNote { TooMany, UploadFailed, Removed, ServerMayKeep }
+
+// What the composer tells the user when a post could not be made
+enum class ComposeNote { UploadFailed, Rejected }
 
 data class AccountInfo(val username: String, val npub: String, val age: Int?)
 
@@ -41,5 +45,9 @@ data class AppState(
     val busy: Boolean = false,
     val photoBusy: Boolean = false,
     val photoNote: PhotoNote? = null,
+    val feed: FeedUiState = FeedUiState(),
+    val composerOpen: Boolean = false,
+    val composeBusy: Boolean = false,
+    val composeNote: ComposeNote? = null,
     val error: AppError? = null,
 )

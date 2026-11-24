@@ -5,6 +5,3 @@ const val NEARBY_KM = 50.0
 
 fun nearbyPeople(people: List<Person>, following: Set<String>): List<Person> =
     people.filter { it.id !in following && it.distanceKm <= NEARBY_KM }.sortedBy { it.distanceKm }
-
-fun feedPosts(posts: List<Post>, following: Set<String>): List<Post> =
-    posts.filter { it.person.id in following || it.person.distanceKm <= NEARBY_KM }.sortedBy { it.minutesAgo }

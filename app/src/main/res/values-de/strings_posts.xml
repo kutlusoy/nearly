@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feed_compose">Neuer Beitrag</string>
+    <string name="feed_compose_hint">Was beschäftigt dich?</string>
+    <string name="feed_compose_post">Posten</string>
+    <string name="feed_compose_photos">Fotos hinzufügen</string>
+    <string name="feed_compose_story">Story, 24 Stunden</string>
+    <plurals name="feed_compose_photo_count">
+        <item quantity="one">%d Foto ausgewählt</item>
+        <item quantity="other">%d Fotos ausgewählt</item>
+    </plurals>
+    <string name="feed_compose_help">Dein Beitrag ist öffentlich. Wer dir folgt, sieht ihn im Feed. Fotos verlieren vor dem Hochladen ihre Standortdaten.</string>
+    <string name="feed_compose_story_help">Eine Story ist öffentlich und verschwindet nach 24 Stunden. Sie hat einen Text bis 140 Zeichen und ein Foto.</string>
+    <string name="feed_compose_rejected">Dieser Beitrag geht nicht. Prüfe den Text und die Fotos.</string>
+    <string name="feed_story_yours">Deine Story</string>
+    <string name="feed_story_add">Story hinzufügen</string>
+    <string name="feed_post_delete_title">Diesen Beitrag löschen?</string>
+    <string name="feed_post_delete_help">Der Beitrag verschwindet jetzt von diesem Handy. Die Relays werden gebeten, ihn zu löschen, sie dürfen ihn aber behalten.</string>
+    <string name="feed_post_failed">Nicht gesendet. Tippe, um es noch einmal zu versuchen.</string>
+    <string name="feed_empty_title">Noch keine Beiträge</string>
+    <string name="feed_empty_help">Beiträge der Menschen, denen du folgst, erscheinen hier. Folge Menschen in deiner Nähe oder schreibe selbst den ersten Beitrag.</string>
+</resources>

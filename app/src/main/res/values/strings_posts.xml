@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feed_compose">New post</string>
+    <string name="feed_compose_hint">What is on your mind?</string>
+    <string name="feed_compose_post">Post</string>
+    <string name="feed_compose_photos">Add photos</string>
+    <string name="feed_compose_story">Story, 24 hours</string>
+    <plurals name="feed_compose_photo_count">
+        <item quantity="one">%d photo selected</item>
+        <item quantity="other">%d photos selected</item>
+    </plurals>
+    <string name="feed_compose_help">Your post is public. People who follow you see it in their feed. Photos lose their location data before they are uploaded.</string>
+    <string name="feed_compose_story_help">A story is public and disappears after 24 hours. It has a text of up to 140 characters and one photo.</string>
+    <string name="feed_compose_rejected">This post cannot be made. Check the text and the photos.</string>
+    <string name="feed_story_yours">Your story</string>
+    <string name="feed_story_add">Add a story</string>
+    <string name="feed_post_delete_title">Delete this post?</string>
+    <string name="feed_post_delete_help">The post leaves this phone now. The relays are asked to delete it, but they may keep it.</string>
+    <string name="feed_post_failed">Not sent. Tap to try again.</string>
+    <string name="feed_empty_title">No posts yet</string>
+    <string name="feed_empty_help">Posts of the people you follow appear here. Follow people near you, or write the first post yourself.</string>
+</resources>

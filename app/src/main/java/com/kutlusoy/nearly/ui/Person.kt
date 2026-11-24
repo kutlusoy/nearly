@@ -32,5 +32,3 @@ fun Person.photoColors(index: Int): Pair<Color, Color> = when (index % 4) {
     2 -> androidx.compose.ui.graphics.lerp(from, Color.Black, 0.25f) to androidx.compose.ui.graphics.lerp(to, Color.Black, 0.15f)
     else -> androidx.compose.ui.graphics.lerp(to, Color.White, 0.2f) to androidx.compose.ui.graphics.lerp(from, Color.White, 0.2f)
 }
-
-data class Post(val id: String, val person: Person, val caption: String, val minutesAgo: Int, val likes: Int)
