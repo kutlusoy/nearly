@@ -26,7 +26,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         activity?.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
     }
     NearlyTheme(dark = dark) {
-        CompositionLocalProvider(LocalPhotoLoader provides viewModel::loadPhoto, LocalBlockPerson provides viewModel::block) {
+        CompositionLocalProvider(LocalPhotoLoader provides viewModel::loadPhoto, LocalBlockPerson provides viewModel::block, LocalReportPerson provides viewModel::report) {
             when (state.screen) {
                 Screen.Welcome -> WelcomeScreen(onCreate = viewModel::openRegistration, onSignIn = { viewModel.show(Screen.SignIn) })
                 Screen.Registration -> RegistrationScreen(
@@ -68,6 +68,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onRetry = viewModel::retryMessage,
                             onBack = viewModel::closeChat,
                             onProfile = { state.chat.openPeer?.let(viewModel::openProfile) },
+                            stranger = state.chat.openStranger,
                             loadPhoto = viewModel::chatPhoto,
                             onSendPhoto = { uri, once, direct, replace -> viewModel.sendChatPhoto({ context.contentResolver.openInputStream(uri) ?: throw java.io.IOException("cannot open") }, once, direct, replace) },
                             onCancelPhoto = viewModel::cancelChatPhoto,
