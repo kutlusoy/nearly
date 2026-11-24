@@ -140,5 +140,5 @@ fun Session.hex(): String = NostrKeys.toHex(publicKey)
 
 class FakeArea(var cell: String?, var granted: Boolean = true) : com.kutlusoy.nearly.discovery.AreaSource {
     override fun hasPermission() = granted
-    override fun current(onResult: (String?) -> Unit) = onResult(if (granted) cell else null)
+    override fun current(length: Int, onResult: (String?) -> Unit) = onResult(if (granted) cell?.let { if (it.length >= length) it.take(length) else it.padEnd(length, 'c') } else null)
 }
