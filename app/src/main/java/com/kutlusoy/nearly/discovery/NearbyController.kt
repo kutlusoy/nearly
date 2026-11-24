@@ -22,8 +22,10 @@ import kotlinx.coroutines.flow.update
 interface AreaSource {
     fun hasPermission(): Boolean
 
-    // Calls back with the cell, or null when the place is not known (yet)
-    fun current(onResult: (String?) -> Unit)
+    // Calls back with the cell of the given length, or null when the place is not known (yet)
+    fun current(length: Int, onResult: (String?) -> Unit)
+
+    fun current(onResult: (String?) -> Unit) = current(5, onResult)
 }
 
 data class NearbyState(

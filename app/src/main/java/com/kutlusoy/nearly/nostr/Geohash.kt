@@ -86,6 +86,23 @@ object Geohash {
         return out.toList()
     }
 
+    // The cells around a cell as rows from north to south, with `radius` cells to every side. A cell beyond a pole is an empty string.
+    fun grid(cell: String, radius: Int): List<List<String>> {
+        val b = bounds(cell)
+        val dLat = b.latHi - b.latLo
+        val dLon = b.lonHi - b.lonLo
+        return (radius downTo -radius).map { dy ->
+            (-radius..radius).map { dx ->
+                val lat = b.centerLat + dy * dLat
+                if (lat < -90.0 || lat > 90.0) return@map ""
+                var lon = b.centerLon + dx * dLon
+                if (lon > 180.0) lon -= 360.0
+                if (lon < -180.0) lon += 360.0
+                encode(lat, lon, cell.length)
+            }
+        }
+    }
+
     fun distanceKm(a: String, b: String): Double {
         val x = bounds(a)
         val y = bounds(b)
