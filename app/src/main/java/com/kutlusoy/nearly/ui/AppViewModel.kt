@@ -98,6 +98,8 @@ class AppViewModel @JvmOverloads constructor(
 
     fun block(peer: String) = chat.block(peer)
 
+    fun report(peer: String, type: com.kutlusoy.nearly.nostr.ReportType, note: String) = chat.report(peer, type, note)
+
     fun unblock(peer: String) = chat.unblock(peer)
 
     fun openBlocked(open: Boolean) = _state.update { it.copy(blockedOpen = open) }
