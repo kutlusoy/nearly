@@ -38,7 +38,7 @@ class PresenceFlowTest {
         while (!condition()) {
             shadowOf(Looper.getMainLooper()).idle()
             rule.waitForIdle()
-            check(System.currentTimeMillis() < end) { "timeout" }
+            check(System.currentTimeMillis() < end) { "timeout at " + Throwable().stackTrace.first { it.className.endsWith("PresenceFlowTest") && it.methodName != "waitFor" } }
             Thread.sleep(50)
         }
     }
@@ -61,6 +61,7 @@ class PresenceFlowTest {
         val ben = phone(relay, "ben")
         waitFor { anna.state.value.nearby.people.size == 1 && ben.state.value.nearby.people.size == 1 }
         anna.toggleFollowKey(anna.state.value.nearby.people.single().key!!)
+        waitFor { anna.state.value.chat.following.size == 1 && anna.state.value.presence.friendCount == 0 }
         ben.toggleFollowKey(ben.state.value.nearby.people.single().key!!)
         waitFor { anna.state.value.presence.friendCount == 1 && ben.state.value.presence.friendCount == 1 }
         assertTrue(anna.startPresence(900))
