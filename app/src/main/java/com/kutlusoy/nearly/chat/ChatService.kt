@@ -5,6 +5,10 @@ import com.kutlusoy.nearly.nostr.Event
 import com.kutlusoy.nearly.nostr.GiftWrap
 import com.kutlusoy.nearly.nostr.ImageSanitizer
 import com.kutlusoy.nearly.nostr.Interest
+import com.kutlusoy.nearly.nostr.MuteLoad
+import com.kutlusoy.nearly.nostr.MuteService
+import com.kutlusoy.nearly.nostr.Report
+import com.kutlusoy.nearly.nostr.ReportType
 import com.kutlusoy.nearly.nostr.PhotoAssembler
 import com.kutlusoy.nearly.nostr.PhotoTransfer
 import java.util.concurrent.CountDownLatch
@@ -40,7 +44,9 @@ class ChatService(
     private val chunkTimeoutSeconds: Long = 30,
     private val onMatch: (peer: String) -> Unit = {},
     private val later: (delaySeconds: Long, task: Runnable) -> AutoCloseable = defaultLater,
+    private val onMuted: (peer: String) -> Unit = {},
 ) {
+    private val mutes = MuteService(transport, session)
     private val own = NostrKeys.toHex(session.publicKey)
     private var inbox: AutoCloseable? = null
     private val rejections = HashMap<String, Int>()
@@ -62,6 +68,31 @@ class ChatService(
                 onChange()
             },
         )
+        syncMutes()
+    }
+
+    // The block list on the relays and on this phone are joined: keys of the list are blocked here, local keys are added to the list
+    private fun syncMutes() = mutes.load {
+        val list = mutes.current ?: return@load
+        list.keys.filter { it != own && !store.isBlocked(it) }.forEach(onMuted)
+        val extra = store.blocked().filter { it !in list.keys }
+        if (extra.isNotEmpty()) mutes.change { l -> extra.fold(l) { acc, key -> acc.add(key) } }
+    }
+
+    fun mute(peer: String, muted: Boolean) {
+        if (!isPubkey(peer) || peer == own) return
+        val apply = { mutes.change { if (muted) it.add(peer) else it.remove(peer) } }
+        if (mutes.isLoaded) apply() else mutes.load { result ->
+            if (result == MuteLoad.None) mutes.startEmpty()
+            if (mutes.isLoaded) apply()
+        }
+    }
+
+    // A public report (NIP-56). The caller asks for the consent first.
+    fun report(peer: String, type: ReportType, note: String): Boolean {
+        if (!isPubkey(peer) || peer == own) return false
+        transport.publish(Report.build(session, peer, type, note, clock()))
+        return true
     }
 
     fun stop() {
