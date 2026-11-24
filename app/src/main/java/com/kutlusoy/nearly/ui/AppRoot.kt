@@ -6,10 +6,13 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kutlusoy.nearly.ui.theme.NearlyTheme
 import com.kutlusoy.nearly.ui.theme.isDark
@@ -24,6 +27,15 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
     SideEffect {
         val bars = if (dark) SystemBarStyle.dark(AndroidColor.TRANSPARENT) else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
         activity?.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+    }
+    // The place is shared only while the app is on screen
+    DisposableEffect(activity) {
+        val lifecycle = activity?.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) viewModel.appVisible(false) else if (event == Lifecycle.Event.ON_START) viewModel.appVisible(true)
+        }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer) }
     }
     NearlyTheme(dark = dark) {
         CompositionLocalProvider(LocalPhotoLoader provides viewModel::loadPhoto, LocalBlockPerson provides viewModel::block, LocalReportPerson provides viewModel::report) {
@@ -91,6 +103,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onClearError = viewModel::clearChatError,
                             onBack = { viewModel.openFollowing(false) },
                         )
+                    } else if (state.privacyOpen) {
+                        PrivacyScreen(settings = state.presenceSettings, onChange = viewModel::updatePresenceSettings, onBack = { viewModel.openPrivacy(false) })
                     } else if (state.blockedOpen) {
                         BlockedScreen(
                             contacts = state.chat.blocked,
@@ -132,6 +146,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onMessagePolicy = viewModel::setMessagePolicy,
                             blockedCount = state.chat.blocked.size,
                             onBlocked = { viewModel.openBlocked(true) },
+                            onPrivacy = { viewModel.openPrivacy(true) },
                             onDeleteAccount = viewModel::deleteAccount,
                         )
                     } else {
@@ -162,6 +177,16 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             feed = state.feed,
                             feedActions = FeedActions(viewModel::likePost, viewModel::unlikePost, viewModel::deletePost, viewModel::retryPost, viewModel::storySeen),
                             onCompose = { viewModel.openComposer(true) },
+                            presence = state.presence,
+                            presenceSettings = state.presenceSettings,
+                            mapActions = MapActions(
+                                start = { seconds -> viewModel.startPresence(seconds) },
+                                stop = viewModel::stopPresence,
+                                explained = viewModel::presenceExplained,
+                                privacy = { viewModel.openPrivacy(true) },
+                                openProfile = viewModel::openProfile,
+                                allowLocation = viewModel::refreshArea,
+                            ),
                         )
                     }
                     state.chat.match?.let { match -> MatchDialog(match.name, onMessage = viewModel::messageMatch, onLater = viewModel::dismissMatch) }
