@@ -7,6 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,6 +31,15 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
     SideEffect {
         val bars = if (dark) SystemBarStyle.dark(AndroidColor.TRANSPARENT) else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
         activity?.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+    }
+    // Android 13 and later ask before an app may show notifications, once after the sign in
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { viewModel.refreshNotifyPermission() }
+    var asked by remember { mutableStateOf(false) }
+    LaunchedEffect(state.screen, state.notify.enabled, state.notifyPermission) {
+        if (!asked && state.screen == Screen.Main && state.notify.enabled && !state.notifyPermission && android.os.Build.VERSION.SDK_INT >= 33) {
+            asked = true
+            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
     // The place is shared only while the app is on screen
     DisposableEffect(activity) {
@@ -103,6 +116,14 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onClearError = viewModel::clearChatError,
                             onBack = { viewModel.openFollowing(false) },
                         )
+                    } else if (state.notificationsOpen) {
+                        NotificationsScreen(
+                            settings = state.notify,
+                            permitted = state.notifyPermission,
+                            onChange = viewModel::updateNotify,
+                            onPermissionResult = viewModel::refreshNotifyPermission,
+                            onBack = { viewModel.openNotifications(false) },
+                        )
                     } else if (state.privacyOpen) {
                         PrivacyScreen(settings = state.presenceSettings, onChange = viewModel::updatePresenceSettings, onBack = { viewModel.openPrivacy(false) })
                     } else if (state.blockedOpen) {
@@ -147,6 +168,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             blockedCount = state.chat.blocked.size,
                             onBlocked = { viewModel.openBlocked(true) },
                             onPrivacy = { viewModel.openPrivacy(true) },
+                            onNotifications = { viewModel.openNotifications(true) },
                             onDeleteAccount = viewModel::deleteAccount,
                         )
                     } else {
