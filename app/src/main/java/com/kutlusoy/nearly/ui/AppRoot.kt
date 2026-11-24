@@ -75,6 +75,13 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onPhotoViaRelay = viewModel::sendChatPhotoViaRelay,
                             onPhotoViewed = viewModel::chatPhotoViewed,
                         )
+                    } else if (state.composerOpen) {
+                        ComposerScreen(
+                            busy = state.composeBusy,
+                            note = state.composeNote,
+                            onBack = { viewModel.openComposer(false) },
+                            onSubmit = { text, uris, story -> viewModel.publishPost(text, uris.map { uri -> { context.contentResolver.openInputStream(uri) ?: throw java.io.IOException("cannot open") } }, story) },
+                        )
                     } else if (state.followingOpen) {
                         FollowingScreen(
                             contacts = state.chat.following,
@@ -152,6 +159,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             onMessageKey = viewModel::messagePerson,
                             onSwipe = viewModel::swipe,
                             onUndo = viewModel::undoSwipe,
+                            feed = state.feed,
+                            feedActions = FeedActions(viewModel::likePost, viewModel::unlikePost, viewModel::deletePost, viewModel::retryPost, viewModel::storySeen),
+                            onCompose = { viewModel.openComposer(true) },
                         )
                     }
                     state.chat.match?.let { match -> MatchDialog(match.name, onMessage = viewModel::messageMatch, onLater = viewModel::dismissMatch) }

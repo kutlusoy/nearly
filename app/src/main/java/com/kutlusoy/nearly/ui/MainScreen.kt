@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.chat.ChatUiState
 import com.kutlusoy.nearly.discovery.NearbyState
+import com.kutlusoy.nearly.feed.FeedUiState
 
 private fun Tab.icon(selected: Boolean = true): ImageVector = when (this) {
     Tab.Swipe -> if (selected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
@@ -105,6 +106,9 @@ fun MainScreen(
     onMessageKey: (String) -> Unit = {},
     onSwipe: (String, SwipeDirection) -> Unit = { _, _ -> },
     onUndo: () -> Unit = {},
+    feed: FeedUiState = FeedUiState(),
+    feedActions: FeedActions = FeedActions(),
+    onCompose: () -> Unit = {},
 ) {
     val followedKeys = chat.following.map { it.peer }.toSet()
     Scaffold(
@@ -151,7 +155,10 @@ fun MainScreen(
                     followed = followedKeys, onFollowPerson = onFollowKey, onMessagePerson = onMessageKey,
                     )
                 }
-                Tab.Feed -> FeedScreen(people = nearby.people, following = followedKeys, onFollow = onFollowKey)
+                Tab.Feed -> FeedScreen(
+                    people = nearby.people, feed = feed, names = chat.following.associate { it.peer to it.name }, myName = account.username,
+                    following = followedKeys, onFollow = onFollowKey, actions = feedActions, onCompose = onCompose,
+                )
                 Tab.Profile -> ProfileTab(account, profile, chat.following.size, onSettings, onEditProfile, onOpenFollowing)
                 Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings, onFollowRequest = onFollowRequest, onDeleteRequest = onDeleteRequest, onBlockRequest = onBlockRequest)
                 else -> SoonTab(tab)
