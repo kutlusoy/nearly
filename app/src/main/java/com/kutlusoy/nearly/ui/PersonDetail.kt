@@ -64,6 +64,9 @@ fun PersonDetail(
 ) {
     BackHandler(onBack = onClose)
     val block = LocalBlockPerson.current
+    val report = LocalReportPerson.current
+    var reporting by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (reporting && report != null && person.key != null) ReportDialog(onDismiss = { reporting = false }, onSend = { type, note -> reporting = false; report(person.key, type, note); onClose() })
     var confirmBlock by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     if (confirmBlock && block != null && person.key != null) {
         androidx.compose.material3.AlertDialog(
@@ -136,6 +139,11 @@ fun PersonDetail(
                     if (block != null && person.key != null) {
                         androidx.compose.material3.TextButton(onClick = { confirmBlock = true }, modifier = Modifier.testTag("detail-block")) {
                             Text(stringResource(R.string.block_action), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    if (report != null && person.key != null) {
+                        androidx.compose.material3.TextButton(onClick = { reporting = true }, modifier = Modifier.testTag("detail-report")) {
+                            Text(stringResource(R.string.report_action), color = MaterialTheme.colorScheme.error)
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)

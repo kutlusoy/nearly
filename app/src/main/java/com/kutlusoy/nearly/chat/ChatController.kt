@@ -4,6 +4,7 @@ import com.kutlusoy.nearly.network.NetworkLink
 import com.kutlusoy.nearly.network.NetworkMode
 import com.kutlusoy.nearly.network.NetworkStatus
 import com.kutlusoy.nearly.nostr.NostrKeys
+import com.kutlusoy.nearly.nostr.ReportType
 import com.kutlusoy.nearly.nostr.Session
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class ConversationUi(val peer: String, val name: String, val last: ChatMessage, val unread: Int)
+data class ConversationUi(val peer: String, val name: String, val last: ChatMessage, val unread: Int, val suspicious: Boolean = false)
 
 // A person the user knows: the profile from the relays and the ID that is shown on the profile page
 data class ContactUi(val peer: String, val name: String, val about: String, val age: Int?, val npub: String, val followed: Boolean, val blocked: Boolean = false)
@@ -39,6 +40,7 @@ data class ChatUiState(
     val match: ContactUi? = null,
     val likeLimit: Boolean = false,
     val undoable: String? = null,
+    val openStranger: Boolean = false,
 )
 
 // Connects the network, the chat service and the screens: opens with the account, closes with the sign out
@@ -60,7 +62,7 @@ class ChatController(
         val key = NostrKeys.toHex(session.publicKey).take(16)
         val chatStore = storeFor(key)
         store = chatStore
-        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) } }, onIncoming = { message ->
+        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) } }, onMuted = { peer -> applyBlock(peer) }, onIncoming = { message ->
             if (_state.value.openPeer == message.peer) {
                 chatStore.markRead(message.peer)
                 refresh()
@@ -250,6 +252,17 @@ class ChatController(
 
     // Blocking removes the chat and the follow, and the messages of the person are dropped from now on
     fun block(peer: String) {
+        applyBlock(peer)
+        service?.mute(peer, true)
+    }
+
+    // A report is public and needs the consent of the user, which the screen asks for. The person is blocked as well.
+    fun report(peer: String, type: ReportType, note: String) {
+        service?.report(peer, type, note)
+        block(peer)
+    }
+
+    private fun applyBlock(peer: String) {
         val chatStore = store ?: return
         chatStore.setBlocked(peer, true)
         chatStore.setFollowed(peer, false)
@@ -261,6 +274,7 @@ class ChatController(
 
     fun unblock(peer: String) {
         store?.setBlocked(peer, false)
+        service?.mute(peer, false)
         refresh()
     }
 
@@ -275,7 +289,7 @@ class ChatController(
         val followed = chatStore.followed().toSet()
         val (visible, hidden) = chatStore.conversations().partition { isVisible(chatStore, it.peer, followed) }
         val conversations = visible.map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
-        val requests = hidden.map { ConversationUi(it.peer, displayName(chatStore, it.peer), it.last, it.unread) }
+        val requests = hidden.map { c -> ConversationUi(c.peer, displayName(chatStore, c.peer), c.last, c.unread, chatStore.messages(c.peer).firstOrNull { !it.mine }?.let { Suspicion.isSuspicious(it.text) } ?: false) }
         val messages = if (open != null) chatStore.messages(open) else emptyList()
         val following = chatStore.followed().map { contact(chatStore, it) }
         val blocked = chatStore.blocked().map { contact(chatStore, it) }
@@ -291,6 +305,7 @@ class ChatController(
                 messages = messages,
                 hidden = hiddenKeys(chatStore),
                 openName = if (open != null) displayName(chatStore, open) else "",
+                openStranger = open != null && open !in followed && open !in chatStore.matches(),
             )
         }
     }
