@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="map_start_title">Show friends that you are active</string>
+    <string name="map_start_help">Only friends see you, and only while you are active. Friends are people you follow who follow you back.</string>
+    <string name="map_for_15m">15 min</string>
+    <string name="map_for_1h">1 hour</string>
+    <string name="map_for_4h">4 hours</string>
+    <string name="map_for_midnight">Until midnight</string>
+    <string name="map_active">Active, %1$d min left</string>
+    <string name="map_stop">Stop</string>
+    <string name="map_nobody">You share your place with nobody</string>
+    <string name="map_nobody_help">In the privacy settings you can let your friends see when you are active.</string>
+    <string name="map_open_privacy">Privacy settings</string>
+    <string name="map_location">Your place is needed</string>
+    <string name="map_location_help">The map needs the approximate place of your phone. Only a field leaves your phone, never your position.</string>
+    <string name="map_explain_title">Before you start</string>
+    <string name="map_explain">Your friends see a field on a grid while you are active, and you see theirs. Nobody else sees it. The field is sent in private messages that disappear after three minutes. Nothing is kept, there is no history, and there is no map picture, so no map server learns where you look.</string>
+    <string name="map_explain_cell_1">Your field is about 1 km wide. You can change that in the privacy settings.</string>
+    <string name="map_explain_cell_5">Your field is about 5 km wide. You can change that in the privacy settings.</string>
+    <string name="map_explain_ok">Understood</string>
+    <string name="map_no_friends">No friends yet. Follow people, and ask them to follow you back.</string>
+    <string name="map_friends_count">%1$d friends can share their place with you</string>
+    <string name="map_looking">Looking around. Friends show up within a minute.</string>
+    <string name="map_none_active">None of your friends is active right now.</string>
+    <string name="map_same_cell">In your field</string>
+    <string name="map_km_away">About %1$.0f km away</string>
+    <string name="map_now">Now</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_privacy_help">Who sees when you are active, and how exactly.</string>
+    <string name="privacy_title">Privacy</string>
+    <string name="privacy_who">Who sees that I am active</string>
+    <string name="privacy_friends">Friends</string>
+    <string name="privacy_friends_help">People you follow who follow you back.</string>
+    <string name="privacy_nobody">Nobody</string>
+    <string name="privacy_nobody_help">You cannot be active on the map.</string>
+    <string name="privacy_size">How exact the field is</string>
+    <string name="privacy_size_1">About 1 km</string>
+    <string name="privacy_size_1_help">Friends see the part of town you are in.</string>
+    <string name="privacy_size_5">About 5 km</string>
+    <string name="privacy_size_5_help">Friends see only the area around your town.</string>
+    <string name="privacy_see">See my friends on the grid</string>
+    <string name="privacy_see_help">Turn this off to ignore the places of friends. They can still see yours.</string>
+    <string name="privacy_public">What is public</string>
+    <string name="privacy_public_help">Your profile, your discovery card with a field of about 5 km while it is visible, and your posts and stories. Your presence on the map, your chats, your likes and your blocks are private.</string>
+</resources>

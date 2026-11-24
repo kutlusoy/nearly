@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="map_start_title">Freunden zeigen, dass du aktiv bist</string>
+    <string name="map_start_help">Nur Freunde sehen dich, und nur solange du aktiv bist. Freunde sind Menschen, denen du folgst und die dir zurückfolgen.</string>
+    <string name="map_for_15m">15 Min.</string>
+    <string name="map_for_1h">1 Stunde</string>
+    <string name="map_for_4h">4 Stunden</string>
+    <string name="map_for_midnight">Bis Mitternacht</string>
+    <string name="map_active">Aktiv, noch %1$d Min.</string>
+    <string name="map_stop">Beenden</string>
+    <string name="map_nobody">Du teilst deinen Ort mit niemandem</string>
+    <string name="map_nobody_help">In den Privatsphäre-Einstellungen kannst du Freunden zeigen, wann du aktiv bist.</string>
+    <string name="map_open_privacy">Privatsphäre-Einstellungen</string>
+    <string name="map_location">Dein Ort wird gebraucht</string>
+    <string name="map_location_help">Die Karte braucht den ungefähren Ort deines Handys. Nur ein Feld verlässt dein Handy, nie deine Position.</string>
+    <string name="map_explain_title">Bevor du startest</string>
+    <string name="map_explain">Deine Freunde sehen ein Feld auf einem Raster, solange du aktiv bist, und du siehst ihre. Sonst sieht es niemand. Das Feld geht in privaten Nachrichten raus, die nach drei Minuten verschwinden. Nichts wird gespeichert, es gibt keinen Verlauf und kein Kartenbild, also erfährt kein Kartenserver, wohin du schaust.</string>
+    <string name="map_explain_cell_1">Dein Feld ist etwa 1 km breit. Das kannst du in den Privatsphäre-Einstellungen ändern.</string>
+    <string name="map_explain_cell_5">Dein Feld ist etwa 5 km breit. Das kannst du in den Privatsphäre-Einstellungen ändern.</string>
+    <string name="map_explain_ok">Verstanden</string>
+    <string name="map_no_friends">Noch keine Freunde. Folge Menschen und bitte sie, dir zurückzufolgen.</string>
+    <string name="map_friends_count">%1$d Freunde können ihren Ort mit dir teilen</string>
+    <string name="map_looking">Ich schaue mich um. Freunde erscheinen innerhalb einer Minute.</string>
+    <string name="map_none_active">Gerade ist keiner deiner Freunde aktiv.</string>
+    <string name="map_same_cell">In deinem Feld</string>
+    <string name="map_km_away">Etwa %1$.0f km entfernt</string>
+    <string name="map_now">Jetzt</string>
+    <string name="settings_privacy">Privatsphäre</string>
+    <string name="settings_privacy_help">Wer sieht, wann du aktiv bist, und wie genau.</string>
+    <string name="privacy_title">Privatsphäre</string>
+    <string name="privacy_who">Wer sieht, dass ich aktiv bin</string>
+    <string name="privacy_friends">Freunde</string>
+    <string name="privacy_friends_help">Menschen, denen du folgst und die dir zurückfolgen.</string>
+    <string name="privacy_nobody">Niemand</string>
+    <string name="privacy_nobody_help">Du kannst auf der Karte nicht aktiv sein.</string>
+    <string name="privacy_size">Wie genau das Feld ist</string>
+    <string name="privacy_size_1">Etwa 1 km</string>
+    <string name="privacy_size_1_help">Freunde sehen den Stadtteil, in dem du bist.</string>
+    <string name="privacy_size_5">Etwa 5 km</string>
+    <string name="privacy_size_5_help">Freunde sehen nur die Gegend um deine Stadt.</string>
+    <string name="privacy_see">Meine Freunde auf dem Raster sehen</string>
+    <string name="privacy_see_help">Schalte das aus, um die Orte von Freunden zu ignorieren. Sie können deinen weiter sehen.</string>
+    <string name="privacy_public">Was öffentlich ist</string>
+    <string name="privacy_public_help">Dein Profil, deine Entdecken-Karte mit einem Feld von etwa 5 km, solange sie sichtbar ist, und deine Beiträge und Stories. Deine Präsenz auf der Karte, deine Chats, deine Likes und deine Sperren sind privat.</string>
+</resources>
