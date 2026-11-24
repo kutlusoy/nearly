@@ -19,6 +19,9 @@ import com.kutlusoy.nearly.feed.FeedStore
 import com.kutlusoy.nearly.feed.SqliteFeedStore
 import com.kutlusoy.nearly.media.BlossomPhotoBackend
 import com.kutlusoy.nearly.media.PhotoBackend
+import com.kutlusoy.nearly.presence.PrefsPresenceMemory
+import com.kutlusoy.nearly.presence.PresenceController
+import com.kutlusoy.nearly.presence.PresenceSettings
 import com.kutlusoy.nearly.nostr.DeleteResult
 import com.kutlusoy.nearly.nostr.PhotoRef
 import com.kutlusoy.nearly.network.NetworkLink
@@ -63,6 +66,8 @@ class AppViewModel @JvmOverloads constructor(
 ) : AndroidViewModel(app) {
     private val chat = ChatController(link, chatStoreFor, viewModelScope)
     private val feed = FeedController(link, feedStoreFor)
+    private val presence = PresenceController(link, area)
+    private var backgroundJob: kotlinx.coroutines.Job? = null
     private val nearby = NearbyController(link, area)
     private val saved = SavedLoginStore(File(app.noBackupFilesDir, "session.bin"), box)
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
@@ -71,17 +76,23 @@ class AppViewModel @JvmOverloads constructor(
     private val pictures = android.util.LruCache<String, ImageBitmap>(48)
     private val downloads = Semaphore(3)
 
-    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), profile = MyProfile.load(prefs), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), presenceSettings = PresenceSettings.load(prefs), profile = MyProfile.load(prefs), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch {
             var blockedBefore = emptySet<String>()
+            var followsBefore = emptySet<String>()
             chat.state.collect { c ->
                 _state.update { it.copy(chat = c) }
                 val blocked = c.blocked.map { b -> b.peer }.toSet()
                 nearby.setBlocked(blocked)
-                feed.setFollows(c.following.map { f -> f.peer }.toSet())
+                val follows = c.following.map { f -> f.peer }.toSet()
+                feed.setFollows(follows)
+                if (follows != followsBefore || blocked != blockedBefore) {
+                    followsBefore = follows
+                    presence.followsChanged()
+                }
                 if (blocked != blockedBefore) {
                     blockedBefore = blocked
                     feed.refresh()
@@ -89,6 +100,8 @@ class AppViewModel @JvmOverloads constructor(
             }
         }
         viewModelScope.launch { feed.state.collect { f -> _state.update { it.copy(feed = f) } } }
+        viewModelScope.launch { presence.state.collect { p -> _state.update { it.copy(presence = p) } } }
+        chat.onPresence = presence::receive
         viewModelScope.launch { nearby.state.collect { n -> _state.update { it.copy(nearby = n) } } }
         restore()
     }
@@ -127,6 +140,12 @@ class AppViewModel @JvmOverloads constructor(
         chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode, _state.value.profile.photos.firstOrNull()?.url)
         nearby.open(opened)
         feed.open(opened) { key -> _state.value.chat.blocked.any { it.peer == key } }
+        presence.open(
+            opened, PrefsPresenceMemory(prefs, NostrKeys.toHex(opened.publicKey).take(16)),
+            follows = { _state.value.chat.following.map { it.peer }.toSet() },
+            isBlocked = { key -> _state.value.chat.blocked.any { it.peer == key } },
+            settings = { _state.value.presenceSettings },
+        )
         nearby.setRadius(radius(_state.value.discovery))
         publishCard()
         restoreProfile()
@@ -154,6 +173,7 @@ class AppViewModel @JvmOverloads constructor(
             chat.close()
             nearby.close()
             feed.close()
+            presence.close()
             getApplication<Application>().deleteDatabase("chat-$key.db")
             getApplication<Application>().deleteDatabase("feed-$key.db")
             val theme = prefs.getString(KEY_THEME, null)
@@ -204,6 +224,31 @@ class AppViewModel @JvmOverloads constructor(
                 else -> feed.postText(text)
             }
             _state.update { it.copy(composeBusy = false, composerOpen = !ok, composeNote = if (ok) null else if (list == null) ComposeNote.UploadFailed else ComposeNote.Rejected) }
+        }
+    }
+
+    fun startPresence(seconds: Long) = presence.start(seconds)
+
+    fun stopPresence() = presence.stop()
+
+    fun presenceExplained() = presence.explained()
+
+    fun openPrivacy(open: Boolean) = _state.update { it.copy(privacyOpen = open) }
+
+    fun updatePresenceSettings(settings: PresenceSettings) {
+        PresenceSettings.save(prefs, settings)
+        _state.update { it.copy(presenceSettings = settings) }
+        if (settings.audience == com.kutlusoy.nearly.presence.PresenceAudience.Nobody) presence.stop()
+        presence.refresh()
+    }
+
+    // The place is shared only while the app is on screen: after half a minute in the background the presence stops
+    fun appVisible(visible: Boolean) {
+        backgroundJob?.cancel()
+        backgroundJob = null
+        if (!visible) backgroundJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(BACKGROUND_GRACE_MS)
+            presence.stop()
         }
     }
 
@@ -388,7 +433,7 @@ class AppViewModel @JvmOverloads constructor(
     }
 
     fun selectTab(tab: Tab) {
-        _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false) }
+        _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, privacyOpen = false) }
         if (tab == Tab.Swipe || tab == Tab.Feed) nearby.refreshArea()
         if (tab == Tab.Feed) feed.refresh()
     }
@@ -487,16 +532,18 @@ class AppViewModel @JvmOverloads constructor(
         chat.close()
         nearby.close()
         feed.close()
+        presence.close()
         saved.clear()
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, composerOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, composerOpen = false, privacyOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {
         chat.close()
         nearby.close()
         feed.close()
+        presence.close()
         session?.lock()
     }
 
@@ -508,5 +555,6 @@ class AppViewModel @JvmOverloads constructor(
         const val KEY_NETWORK = "network.mode"
         const val KEY_POLICY = "message.policy"
         const val DELETE_GRACE_MS = 4000L
+        const val BACKGROUND_GRACE_MS = 30_000L
     }
 }

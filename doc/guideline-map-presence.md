@@ -1,94 +1,100 @@
 # Nearly: Map and Presence Guideline
 
-- **Version:** 0.1 (draft)
-- **Date:** November 22, 2026
+- **Version:** 0.2 (draft)
+- **Date:** November 24, 2026
 - **Audience:** Product, design and Android developers of Nearly
-- **Reference implementation:** not built yet. The Map tab shows a placeholder (`MainScreen.kt`). The network layer is in `network/`, events in `nostr/`.
-- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) sections 6.2 and 7, [`guideline-decisions.md`](./guideline-decisions.md) row 5, [`guideline-discovery-swipe.md`](./guideline-discovery-swipe.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [`permissionlesstech/bitchat`](https://github.com/permissionlesstech/bitchat), [NIP-40](https://github.com/nostr-protocol/nips/blob/master/40.md), [NIP-13](https://github.com/nostr-protocol/nips/blob/master/13.md)
+- **Reference implementation:** `nostr/Presence.kt`, `presence/` (`PresenceService.kt`, `PresenceController.kt`, `PresenceSettings.kt`), `nostr/Geohash.kt` (`grid`), `ui/MapScreen.kt`, `ui/PrivacyScreen.kt`, `chat/ChatService.kt` (`onPresence`), tests `PresenceServiceTest.kt`, `MapUiTest.kt` and `PresenceFlowTest.kt`.
+- **See also:** [`guideline-product-concept.md`](./guideline-product-concept.md) sections 6.2 and 7, [`guideline-decisions.md`](./guideline-decisions.md) row 5, [`guideline-discovery-swipe.md`](./guideline-discovery-swipe.md), [`guideline-safety-moderation.md`](./guideline-safety-moderation.md), [`guideline-tor-and-i2p.md`](./guideline-tor-and-i2p.md), [NIP-40](https://github.com/nostr-protocol/nips/blob/master/40.md), [NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md)
 
-Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional. The exact event kind of the heartbeat MUST be taken from the BitChat source and the current NIP list before implementation, this draft only fixes the rules.
+Requirement levels: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
 
 ---
 
-## 1. Idea
+## 1. Decisions of the product owner
 
-The map shows people who are active **right now**, nobody else. Being active is a decision of the user for a limited time. The position is coarse, short lived and never written to a place where it stays.
+- **Only friends see the user.** Friends are people the user follows and who follow the user back. Nobody else sees that the user is active or where.
+- **A field of about 1 km** is the default. The user can choose about 5 km instead.
+- **A grid without a map picture.** No tile server, no map library, so nobody learns which area the user looks at.
+- **Everything is a setting** in `Privacy` (section 6): who sees the user (friends or nobody), how exact the field is, and whether the user wants to see the friends on the grid.
 
-## 2. Becoming active
+## 2. Idea
 
-- A button on the map, `I am active`, offers 15 minutes, 1 hour, 4 hours and until midnight. Opening the app or the map does not switch it on.
+The map shows the friends who are active **right now**, nobody else. Being active is a decision of the user for a limited time. The place is a coarse field, short lived, never written to a place where it stays, and sent only to friends.
+
+## 3. Friends
+
+Following is a local list today, so friendship needs a handshake that carries no place:
+
+- When the user follows a person, the app sends a **hello** to that person: a private message (rumor kind 24314 inside a gift wrap, NIP-59) with the content `{"v":1,"t":"hello"}`.
+- A hello from a person the user does not follow is remembered as `incoming`. When the user follows the person later, they are friends.
+- A hello from a person the user follows makes them friends at once, and the app answers with one hello (once per session) so the other side can confirm.
+- **The place is sent only to confirmed friends (MUST).** A person who is followed but did not say hello never receives a place, so a one sided follow cannot be used to watch someone.
+- Unfollowing ends the friendship on this phone at once: no more heartbeats go out and the dot disappears. A friend who still follows the user keeps sending, the user ignores it.
+- Friends and incoming hellos are kept on the device per account. At most 500 incoming hellos, 100 new hellos per session, 30 recipients per heartbeat.
+
+## 4. Becoming active
+
+- The map tab offers `15 min`, `1 hour`, `4 hours` and `until midnight`. Opening the app or the tab does not switch it on.
 - A chip shows the remaining time with a stop button. At the end the heartbeats stop, nothing else is needed.
-- Before the first use a screen says in plain words: people nearby see a dot in a cell of about 1 km, relays see the cell, nobody sees a history.
-- **Home area (SHOULD).** The user may mark places where the app never sends a heartbeat (home, work). The place is stored as a cell on the device. When the phone is inside, `I am active` shows `not shared here`.
-- Presence needs the **approximate** location permission only. No background location. The location is read when the active state starts and then every 5 minutes while the app runs, and the heartbeat follows the new cell.
+- **First use (MUST).** A screen says in plain words: friends see a field on a grid while the user is active, the field is sent in private messages that disappear after three minutes, nothing is kept, there is no history and no map picture. It names the size of the field and points to the privacy settings. Nothing is shared before `Understood`.
+- **Audience `nobody`.** The tab says so and offers the privacy settings. `start` is refused by the service as well.
+- Presence needs the **approximate** location permission only, asked on the tab. No background location. The place is read when the active state starts and every 5 minutes while the app is on screen.
+- **Stop is clean (MUST).** When the user stops, the time ends, the audience is set to nobody, the user signs out, or the app has been in the background for 30 seconds, the heartbeats stop at once. The dot of the user disappears at the friends after the timeout of section 5.
+- **Home area (MAY, not built).** Places where the app never sends a heartbeat (home, work).
 
-## 3. The heartbeat
+## 5. The heartbeat and reading it
 
 | Part | Value |
 |---|---|
-| Kind | an ephemeral kind (20000 to 29999) as in BitChat, so relays do not store it |
-| Tags | `g` = cell of 6 characters (about 1.2 km by 0.6 km), `expiration` (NIP-40) 3 minutes ahead |
-| Content | empty |
-| Interval | every 60 seconds, plus a short random delay of up to 10 seconds |
+| Message | rumor kind 24314 with `{"v":1,"t":"here","g":"<cell>"}`, sealed and wrapped for one friend (NIP-59), sent to each friend separately |
+| Cell | geohash of 6 characters (about 1.2 km by 0.6 km) or 5 characters (about 5 km), by the setting |
+| Outer wrap | `expiration` (NIP-40) 3 minutes ahead, random past time of the seal and the wrap as in every gift wrap |
+| Interval | every 60 seconds plus a random delay of up to 10 seconds |
 
-Rules:
+- **Only the cell leaves the phone (MUST).** Never coordinates. A cell longer than 6 characters is refused when read.
+- **Private by construction.** A relay sees a wrap for one key from a random key. It sees neither the sender, nor the cell, nor that it is a presence. Nothing is public, so there is no directory to sample.
+- **Not kept (MUST).** The chat service does not write the wrap id of a heartbeat to the database, only to a list in memory (2000 entries). The wraps expire after three minutes on relays that know the expiration.
+- **Validity.** A heartbeat counts when the sender is a confirmed friend and still followed, is not blocked, the user wants to see friends, the time in the message is at most 180 seconds old and at most 60 seconds ahead, and the cell has 5 or 6 characters.
+- **Timeout.** A dot disappears 180 seconds after its last accepted heartbeat.
+- **Abuse limits.** At most one accepted heartbeat per friend every 30 seconds, at most 300 dots.
+- **Empty at first.** The grid fills within about a minute after a friend becomes active. The screen says `Looking around`, it never claims that nobody is near.
 
-- **No exact position (MUST).** Only the cell leaves the device. The dot is drawn at a random point inside the cell. The point is drawn once per active session and stays the same until the session ends, so averaging many heartbeats does not reveal the centre and a new session does not follow an old pattern.
-- **Nothing in the content (MUST).** Name and photo come from the profile and the discovery card, which the reader loads when a dot is tapped or visible.
-- **Stop is clean (MUST).** When the user stops, the app goes to the background for more than 30 seconds, signs out or loses the permission, the heartbeats stop at once. Others see the dot disappear after the timeout of section 5.
-- **Relays.** At most three relays are used for presence, chosen from `relays.txt` by the first characters of the cell as the directory grows. All traffic goes through Tor. A directory with coordinates and `.onion` relays is a later step.
+## 6. Screens
 
-## 4. Reading the map
+- **Grid.** 7 by 7 fields around the own field, north on top. The own field is marked, a field with a friend shows the initial or the number of friends. Under the grid a list shows each active friend with the distance (`In your field` or about N km) and the time. A tap opens the profile of the friend. There is no map picture and no zoom.
+- **Privacy (settings, `Privacy`).** `Who sees that I am active`: friends or nobody. `How exact the field is`: about 1 km or about 5 km. `See my friends on the grid`: on or off. `What is public`: the profile, the discovery card with a field of about 5 km while it is visible, posts and stories. Private: the presence, chats, likes, blocks.
 
-- **Query.** `{kinds:[heartbeat], #g:[cells], since: now minus 180 s}` with the cells in view (at most 9 cells of 6 characters, at lower zoom the 5 and 4 character parents are used and the result is grouped). The relay learns the coarse area in view. The client SHOULD ask for the coarser prefix and filter on the device.
-- **Empty at first.** Heartbeats are not stored, so the map fills within about one minute after opening. The map says `looking around` and does not claim that nobody is near.
-- **Validity.** A heartbeat counts when its `created_at` is within 180 seconds in the past and 60 seconds in the future of the phone clock, the signature is valid, the key is not blocked, and the key has a valid discovery card that passes the filter of the user (`DiscoveryFilter.matches` with the stretched limits off).
-- **Timeout.** A dot disappears 180 seconds after its last valid heartbeat.
-- **Abuse limits (MUST).** At most one accepted heartbeat per key every 30 seconds, at most 50 dots per cell and 300 on the map, with followed people and the best matches first. A relay may require proof of work (NIP-13), the client MAY add a small one to the heartbeat to be accepted.
-- **Own dot.** The own dot is shown to the user as the others see it (cell and random point).
-
-## 5. Screen
-
-- MapLibre with OpenStreetMap data. The tile source is an open point (section 7). A downloaded region is the offline fallback.
-- Markers are round profile photos with a ring in the brand colour and a fine line when the person is a match. Many dots in one place become a number marker (clustering) that opens a list.
-- A tap opens a bottom sheet with the card and the actions of the swipe mode (interest, not now, follow, full profile). Interest from the map is the same signal as in swipe mode.
-- Filter and visibility of [`guideline-discovery-swipe.md`](./guideline-discovery-swipe.md) apply. A person with `visible` off is not shown even when active.
-- The map centres on the user on the first open and on the last viewed place after that.
-
-## 6. Privacy and safety analysis
+## 7. Privacy and safety analysis
 
 | Who | Sees | Mitigation |
 |---|---|---|
-| Other users | a dot in a 1 km cell while the user is active | time limited, explicit, home area, no history |
-| A relay | the key, the cell, the time of each heartbeat | Tor hides the address, ephemeral kinds are not stored, at most three relays |
-| A tile server | the area in view | through Tor, region download, own tile server later |
-| An attacker who samples a cell | who is active in it right now | cell size, random point, filter and card needed to be shown |
-| A stalker with many heartbeats of one key | movement between cells | keys are pseudonyms, `home area`, session based random point, advice in the first use screen |
+| A friend | a field of 1 or 5 km while the user is active | the user chooses the friends by following, the time is limited, explicit start, size setting, nobody setting |
+| A person who follows the user but is not followed back | nothing | the place goes only to confirmed friends |
+| A relay | a wrap for one key, its size and time | encrypted, random sender key, expires after three minutes, Tor hides the address |
+| A map or tile server | nothing | no map picture |
+| A stalker with a friend account | the movement between fields of one friend | the user decides who is a friend, unfollowing stops it at once, field of 5 km, advice in the first use screen |
 
-Fake dots cost nothing on Nostr. The card requirement, the rate limits and the caps keep the map usable, they do not prove that a person stands where the dot is.
+A friend sees the field of the user and could also see it change over time. Whoever follows someone back should know that. The first use screen says it.
 
-## 7. Open points
+## 8. Open points
 
-- **Tiles.** The public tile servers of OpenStreetMap have a usage policy that does not fit a large app. Before a release: own tile server, an offline region file, or a provider reached through Tor. The policy MUST be read again at that time.
-- **Battery.** One location read every 5 minutes and a heartbeat every minute through Tor is acceptable only while the app is on screen. A background mode is out of scope.
-- **Clock.** Phones with a wrong clock are not shown or do not see others. The app SHOULD point to the clock when no dot is ever accepted.
+- **Home area.** Not built.
+- **Battery.** One location read every 5 minutes and up to 30 wraps every minute through Tor is acceptable only while the app is on screen. A background mode is out of scope.
+- **Relays.** A relay that ignores the expiration would replay old heartbeats. They are dropped after unwrapping by the 180 second rule, which costs a decryption each.
+- **Clock.** A phone with a wrong clock sees nothing. The app SHOULD point to the clock when no dot is ever accepted.
+- **Kind 3.** When follows live on the relays, the friend check can use the follow list of the other person instead of the hello.
 
-## 8. Tests
+## 9. Tests
 
-To write: cell calculation and neighbours, the random point inside the cell and its stability, heartbeat interval and stop rules with a fake clock, the validity rules, timeout, rate limits and caps with a flood of fake keys, clustering, the home area, and the read path with a fake relay.
+Built: the handshake (one sided, both sides, unfollow), a friend on the grid of the other, nothing leaves without a friend, the nobody setting, the size setting, the wrap is not stored and expires, timeout and the rate limit, the end of the active time, strangers, blocked people and old heartbeats, the checks of the message, the grid cells, two phones through the view model, the screens (first use, durations, grid, friend list, nobody, permission, privacy settings, time until midnight). To write: the stop after 30 seconds in the background, the cap of 30 recipients and 300 dots, an expired wrap that a relay replays.
 
-## 9. Checklist
+## 10. Checklist
 
-- [ ] Read the BitChat source, fix the kind and the cell rules
-- [ ] Location permission and cell calculation on the device
-- [ ] Heartbeat sender with stop rules
-- [ ] Map query, validity rules, timeout, limits
-- [ ] MapLibre screen with markers, clustering and the bottom sheet
+- [x] Friend handshake without a place
+- [x] Location permission and the cell of 5 or 6 characters
+- [x] Heartbeat sender with the stop rules
+- [x] Reading, validity rules, timeout, limits
+- [x] Grid screen without a map picture
+- [x] Privacy settings
 - [ ] Home area
-- [ ] Tile source decided
-
-## 10. Open Questions
-
-1. Which kind number does BitChat use for presence, and do the public relays of `relays.txt` forward ephemeral events at all?
-2. Which tile source is used?
-3. Is a cell of 6 characters (about 1 km) fine enough to be useful and coarse enough to be safe, or should the default be 5 characters?
+- [ ] Friends from the kind 3 list on the relays
