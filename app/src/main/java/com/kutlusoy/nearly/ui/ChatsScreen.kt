@@ -265,6 +265,7 @@ private fun RequestsScreen(requests: List<ConversationUi>, now: Long, onFollow: 
                             }
                             Text(formatTime(item.last.at, now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        if (item.suspicious) Text(stringResource(R.string.request_suspicious), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp).testTag("request-warning-${item.peer.take(8)}"))
                         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { onFollow(item.peer) }, modifier = Modifier.testTag("request-follow-${item.peer.take(8)}")) { Text(stringResource(R.string.requests_follow)) }
                             OutlinedButton(onClick = { onDelete(item.peer) }, modifier = Modifier.testTag("request-delete-${item.peer.take(8)}")) { Text(stringResource(R.string.requests_delete)) }
