@@ -11,6 +11,7 @@ import com.kutlusoy.nearly.nostr.Report
 import com.kutlusoy.nearly.nostr.ReportType
 import com.kutlusoy.nearly.nostr.PhotoAssembler
 import com.kutlusoy.nearly.nostr.PhotoTransfer
+import com.kutlusoy.nearly.nostr.Presence
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -45,6 +46,7 @@ class ChatService(
     private val onMatch: (peer: String) -> Unit = {},
     private val later: (delaySeconds: Long, task: Runnable) -> AutoCloseable = defaultLater,
     private val onMuted: (peer: String) -> Unit = {},
+    private val onPresence: (com.kutlusoy.nearly.nostr.Rumor) -> Unit = {},
 ) {
     private val mutes = MuteService(transport, session)
     private val own = NostrKeys.toHex(session.publicKey)
@@ -52,6 +54,7 @@ class ChatService(
     private val rejections = HashMap<String, Int>()
     private val cancelled = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private val pendingLikes = java.util.concurrent.ConcurrentHashMap<String, AutoCloseable>()
+    private val presenceSeen = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
 
     // Reads the inbox. Wraps carry a random time up to two days in the past, so the filter starts a little earlier than the last sync.
     fun start() {
@@ -282,9 +285,16 @@ class ChatService(
     }
 
     private fun handle(wrap: Event) {
-        if (store.seenWrap(wrap.id)) return
+        if (store.seenWrap(wrap.id) || presenceSeen.contains(wrap.id)) return
+        val rumor = GiftWrap.unwrap(session, wrap)?.rumor
+        // A heartbeat of a friend lives three minutes, so its wrap is kept in memory only
+        if (rumor?.kind == Presence.KIND) {
+            synchronized(presenceSeen) { if (presenceSeen.size >= PRESENCE_SEEN) presenceSeen.remove(presenceSeen.first()); presenceSeen.add(wrap.id) }
+            onPresence(rumor)
+            return
+        }
         store.rememberWrap(wrap.id)
-        val rumor = GiftWrap.unwrap(session, wrap)?.rumor ?: return
+        rumor ?: return
         when (rumor.kind) {
             DirectMessage.KIND_MESSAGE -> handleText(wrap, rumor)
             PhotoTransfer.KIND_CHUNK -> handleChunk(rumor)
@@ -447,6 +457,7 @@ class ChatService(
         const val MAX_OPEN_TRANSFERS = 3
         const val MAX_LIKES_PER_DAY = 100
         const val UNDO_SECONDS = 8L
+        private const val PRESENCE_SEEN = 2000
 
         private val scheduler by lazy { java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "like-later").apply { isDaemon = true } } }
         private val defaultLater: (Long, Runnable) -> AutoCloseable = { seconds, task ->
