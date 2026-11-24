@@ -55,6 +55,9 @@ import com.kutlusoy.nearly.chat.ContactUi
 fun ContactProfileScreen(contact: ContactUi, onBack: () -> Unit, onMessage: () -> Unit, onToggleFollow: () -> Unit, onBlock: () -> Unit = {}, onUnblock: () -> Unit = {}) {
     BackHandler(onBack = onBack)
     var confirmBlock by remember { mutableStateOf(false) }
+    var reporting by remember { mutableStateOf(false) }
+    val report = LocalReportPerson.current
+    if (reporting && report != null) ReportDialog(onDismiss = { reporting = false }, onSend = { type, note -> reporting = false; report(contact.peer, type, note) })
     val context = LocalContext.current
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -88,6 +91,9 @@ fun ContactProfileScreen(contact: ContactUi, onBack: () -> Unit, onMessage: () -
                             clipboard.setPrimaryClip(ClipData.newPlainText("Nearly", contact.npub))
                         }) { Text(stringResource(R.string.reg_words_copy)) }
                     }
+                }
+                if (!contact.blocked && report != null) {
+                    OutlinedButton(onClick = { reporting = true }, modifier = Modifier.testTag("report-contact")) { Text(stringResource(R.string.report_action)) }
                 }
                 if (contact.blocked) {
                     OutlinedButton(onClick = onUnblock, modifier = Modifier.testTag("unblock-contact")) { Text(stringResource(R.string.block_undo)) }

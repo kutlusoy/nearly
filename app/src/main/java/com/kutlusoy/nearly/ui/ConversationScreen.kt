@@ -65,6 +65,7 @@ fun ConversationScreen(
     onPhotoViewed: (String) -> Unit = {},
     onCancelPhoto: (String) -> Unit = {},
     onPhotoViaRelay: (String) -> Unit = {},
+    stranger: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
     var once by remember { mutableStateOf(false) }
@@ -93,6 +94,9 @@ fun ConversationScreen(
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            if (stranger) {
+                Text(stringResource(R.string.conversation_stranger), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 8.dp).testTag("stranger-banner"))
+            }
             if (messages.isEmpty()) {
                 Column(Modifier.weight(1f).fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Text(stringResource(R.string.conversation_encrypted), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
