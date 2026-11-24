@@ -123,17 +123,16 @@ class ProfileFeedPhotosTest {
     }
 
     @Test
-    fun peopleNearbyCanBeFollowedFromTheSuggestionsAndFromAPost() {
+    fun peopleNearbyCanBeFollowedFromTheSuggestions() {
         var following by mutableStateOf(setOf<String>())
         rule.setContent {
-            NearlyTheme { FeedScreen(people = SamplePeople, posts = SamplePosts, following = following, onFollow = { id -> following = if (id in following) following - id else following + id }) }
+            NearlyTheme { FeedScreen(people = SamplePeople, following = following, onFollow = { id -> following = if (id in following) following - id else following + id }) }
         }
         rule.onNodeWithText("People near you").assertExists()
         rule.onNodeWithTag("nearby-mia").assertExists()
-        rule.onNodeWithTag("follow-post-mia").performClick()
+        rule.onNodeWithTag("follow-nearby-mia").performClick()
         assertEquals(setOf("mia"), following)
         rule.onNodeWithTag("nearby-mia").assertDoesNotExist()
-        rule.onNodeWithTag("following-mia").assertExists()
         rule.onNodeWithTag("follow-nearby-jonas").performClick()
         assertEquals(setOf("mia", "jonas"), following)
         rule.onNodeWithTag("nearby-jonas").assertDoesNotExist()
