@@ -14,6 +14,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// Something the user should hear about when the app is not on screen
+sealed interface Notice {
+    data class Message(val peer: String, val name: String, val text: String, val photo: Boolean) : Notice
+    data class Match(val peer: String, val name: String) : Notice
+}
+
 data class ConversationUi(val peer: String, val name: String, val last: ChatMessage, val unread: Int, val suspicious: Boolean = false)
 
 // A person the user knows: the profile from the relays and the ID that is shown on the profile page
@@ -60,16 +66,21 @@ class ChatController(
     // Where the heartbeats of friends go, set by the app
     var onPresence: (com.kutlusoy.nearly.nostr.Rumor) -> Unit = {}
 
+    // Where new messages and matches go, set by the app
+    var onNotice: (Notice) -> Unit = {}
+
     fun open(session: Session, name: String, about: String, age: Int?, mode: NetworkMode, picture: String? = null) {
         close()
         val key = NostrKeys.toHex(session.publicKey).take(16)
         val chatStore = storeFor(key)
         store = chatStore
-        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) } }, onMuted = { peer -> applyBlock(peer) }, onPresence = { rumor -> onPresence(rumor) }, onIncoming = { message ->
+        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) }; onNotice(Notice.Match(peer, displayName(chatStore, peer))) }, onMuted = { peer -> applyBlock(peer) }, onPresence = { rumor -> onPresence(rumor) }, onIncoming = { message ->
             if (_state.value.openPeer == message.peer) {
                 chatStore.markRead(message.peer)
                 refresh()
             }
+            // Hidden requests make no noise
+            if (isVisible(chatStore, message.peer, chatStore.followed().toSet())) onNotice(Notice.Message(message.peer, displayName(chatStore, message.peer), message.text, message.photo != null))
         })
         service = chat
         statusJob = scope.launch { link.status.collect { s -> _state.update { it.copy(network = s) } } }
