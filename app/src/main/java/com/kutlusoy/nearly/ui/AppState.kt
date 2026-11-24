@@ -5,6 +5,8 @@ import com.kutlusoy.nearly.chat.MessagePolicy
 import com.kutlusoy.nearly.discovery.NearbyState
 import com.kutlusoy.nearly.feed.FeedUiState
 import com.kutlusoy.nearly.network.NetworkMode
+import com.kutlusoy.nearly.presence.PresenceSettings
+import com.kutlusoy.nearly.presence.PresenceUi
 import com.kutlusoy.nearly.ui.registration.RegistrationForm
 import com.kutlusoy.nearly.ui.theme.ThemeMode
 import com.kutlusoy.nearly.ui.registration.SignInForm
@@ -49,5 +51,8 @@ data class AppState(
     val composerOpen: Boolean = false,
     val composeBusy: Boolean = false,
     val composeNote: ComposeNote? = null,
+    val presence: PresenceUi = PresenceUi(),
+    val presenceSettings: PresenceSettings = PresenceSettings(),
+    val privacyOpen: Boolean = false,
     val error: AppError? = null,
 )

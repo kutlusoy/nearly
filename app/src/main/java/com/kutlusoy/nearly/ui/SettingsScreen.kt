@@ -66,6 +66,7 @@ fun SettingsScreen(
     onMessagePolicy: (MessagePolicy) -> Unit = {},
     blockedCount: Int = 0,
     onBlocked: () -> Unit = {},
+    onPrivacy: () -> Unit = {},
     onDeleteAccount: () -> Unit = {},
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -101,6 +102,14 @@ fun SettingsScreen(
                 ConnectionOption(R.string.connection_tor, R.string.connection_tor_help, networkMode == NetworkMode.Tor) { onNetworkMode(NetworkMode.Tor) }
                 ConnectionOption(R.string.connection_direct, R.string.connection_direct_help, networkMode == NetworkMode.Direct) { onNetworkMode(NetworkMode.Direct) }
                 NetworkBanner(network, onSettings = {})
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Section(R.string.settings_privacy)
+                Column(Modifier.fillMaxWidth().clickable(onClick = onPrivacy).padding(vertical = 10.dp).testTag("privacy-row")) {
+                    Text(stringResource(R.string.privacy_title), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.settings_privacy_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
 
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
