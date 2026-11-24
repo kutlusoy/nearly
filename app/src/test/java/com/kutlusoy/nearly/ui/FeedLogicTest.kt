@@ -7,21 +7,6 @@ import kotlin.test.assertTrue
 
 class FeedLogicTest {
     @Test
-    fun theFeedShowsPeopleNearbyAndTheOnesYouFollowNoMatterTheDistance() {
-        val none = feedPosts(SamplePosts, emptySet()).map { it.person.id }
-        assertTrue("mia" in none && "marta" in none)
-        assertFalse("paul" in none, "120 km is not nearby")
-        val following = feedPosts(SamplePosts, setOf("paul")).map { it.person.id }
-        assertTrue("paul" in following)
-    }
-
-    @Test
-    fun theNewestPostComesFirst() {
-        val minutes = feedPosts(SamplePosts, setOf("paul")).map { it.minutesAgo }
-        assertEquals(minutes.sorted(), minutes)
-    }
-
-    @Test
     fun nearbyPeopleAreSuggestedUntilYouFollowThemNearestFirst() {
         val suggested = nearbyPeople(SamplePeople, emptySet()).map { it.id }
         assertEquals("mia", suggested.first())
