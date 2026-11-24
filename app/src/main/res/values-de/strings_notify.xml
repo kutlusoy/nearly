@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_notifications">Benachrichtigungen</string>
+    <string name="settings_notifications_help">Neue Nachrichten und Matches, auch wenn die App geschlossen ist.</string>
+    <string name="notify_title">Benachrichtigungen</string>
+    <string name="notify_enabled">Über neue Nachrichten informieren</string>
+    <string name="notify_enabled_help">Du hörst auch von einem neuen Match. Likes werden nie angekündigt.</string>
+    <string name="notify_text">Name und Text anzeigen</string>
+    <string name="notify_text_help">Die Benachrichtigung zeigt, wer geschrieben hat und was. Schalte das aus, um nur zu sehen, dass etwas angekommen ist. Dein Handy kann den Inhalt auch auf dem Sperrbildschirm verbergen.</string>
+    <string name="notify_background">Weiter empfangen, wenn die App geschlossen ist</string>
+    <string name="notify_background_help">Eine kleine dauerhafte Benachrichtigung hält die App mit den Relays verbunden. Sie braucht keinen Google-Dienst und etwas Akku. Ohne sie kommen Nachrichten an, sobald du die App öffnest.</string>
+    <string name="notify_battery">Akku-Einstellungen des Handys</string>
+    <string name="notify_permission_title">Benachrichtigungen sind nicht erlaubt</string>
+    <string name="notify_permission_help">Android fragt dich, bevor eine App Benachrichtigungen zeigen darf.</string>
+    <string name="notify_permission_button">Benachrichtigungen erlauben</string>
+    <string name="notify_channel_messages">Nachrichten und Matches</string>
+    <string name="notify_channel_service">Empfang im Hintergrund</string>
+    <string name="notify_service_title">Nearly empfängt Nachrichten</string>
+    <string name="notify_service_text">Tippen zum Öffnen. Du kannst das in den Einstellungen ausschalten.</string>
+    <string name="notify_new_message">Neue Nachricht</string>
+    <string name="notify_photo">Foto</string>
+    <string name="notify_new_match">Du hast ein neues Match</string>
+</resources>

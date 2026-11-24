@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_help">New messages and matches while the app is closed.</string>
+    <string name="notify_title">Notifications</string>
+    <string name="notify_enabled">Tell me about new messages</string>
+    <string name="notify_enabled_help">You also hear about a new match. Likes are never announced.</string>
+    <string name="notify_text">Show the name and the text</string>
+    <string name="notify_text_help">The notification shows who wrote and what. Turn this off to see only that something arrived. Your phone can hide the content on the lock screen as well.</string>
+    <string name="notify_background">Keep receiving when the app is closed</string>
+    <string name="notify_background_help">A small permanent notification keeps the app connected to the relays. It needs no Google service and uses a little battery. Without it messages arrive when you open the app.</string>
+    <string name="notify_battery">Battery settings of the phone</string>
+    <string name="notify_permission_title">Notifications are not allowed</string>
+    <string name="notify_permission_help">Android asks for your permission before an app may show notifications.</string>
+    <string name="notify_permission_button">Allow notifications</string>
+    <string name="notify_channel_messages">Messages and matches</string>
+    <string name="notify_channel_service">Receiving in the background</string>
+    <string name="notify_service_title">Nearly is receiving messages</string>
+    <string name="notify_service_text">Tap to open. You can turn this off in the settings.</string>
+    <string name="notify_new_message">New message</string>
+    <string name="notify_photo">Photo</string>
+    <string name="notify_new_match">You have a new match</string>
+</resources>
