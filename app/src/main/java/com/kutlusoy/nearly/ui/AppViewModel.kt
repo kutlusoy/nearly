@@ -19,6 +19,10 @@ import com.kutlusoy.nearly.feed.FeedStore
 import com.kutlusoy.nearly.feed.SqliteFeedStore
 import com.kutlusoy.nearly.media.BlossomPhotoBackend
 import com.kutlusoy.nearly.media.PhotoBackend
+import com.kutlusoy.nearly.notify.AndroidNotifier
+import com.kutlusoy.nearly.notify.Notifier
+import com.kutlusoy.nearly.notify.NotifySettings
+import com.kutlusoy.nearly.chat.Notice
 import com.kutlusoy.nearly.presence.PrefsPresenceMemory
 import com.kutlusoy.nearly.presence.PresenceController
 import com.kutlusoy.nearly.presence.PresenceSettings
@@ -62,12 +66,14 @@ class AppViewModel @JvmOverloads constructor(
     area: AreaSource = AndroidAreaSource(app),
     private val photos: PhotoBackend = BlossomPhotoBackend(link, cacheDir = File(app.cacheDir, "photos")),
     private val feedStoreFor: (String) -> FeedStore = { SqliteFeedStore(app, it) },
+    private val notifier: Notifier = AndroidNotifier(app),
     chatStoreFor: (String) -> ChatStore = { SqliteChatStore(app, it) },
 ) : AndroidViewModel(app) {
     private val chat = ChatController(link, chatStoreFor, viewModelScope)
     private val feed = FeedController(link, feedStoreFor)
     private val presence = PresenceController(link, area)
     private var backgroundJob: kotlinx.coroutines.Job? = null
+    private var visible = false
     private val nearby = NearbyController(link, area)
     private val saved = SavedLoginStore(File(app.noBackupFilesDir, "session.bin"), box)
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
@@ -76,7 +82,7 @@ class AppViewModel @JvmOverloads constructor(
     private val pictures = android.util.LruCache<String, ImageBitmap>(48)
     private val downloads = Semaphore(3)
 
-    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), presenceSettings = PresenceSettings.load(prefs), profile = MyProfile.load(prefs), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
+    private val _state = MutableStateFlow(AppState(themeMode = savedTheme(), networkMode = savedNetworkMode(), messagePolicy = savedPolicy(), discovery = DiscoveryFilter.load(prefs), presenceSettings = PresenceSettings.load(prefs), notify = NotifySettings.load(prefs), notifyPermission = notifier.permitted(), profile = MyProfile.load(prefs), signIn = SignInForm(prefs.getString(KEY_USERNAME, "").orEmpty(), prefs.getString(KEY_EMAIL, "").orEmpty())))
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     init {
@@ -102,6 +108,7 @@ class AppViewModel @JvmOverloads constructor(
         viewModelScope.launch { feed.state.collect { f -> _state.update { it.copy(feed = f) } } }
         viewModelScope.launch { presence.state.collect { p -> _state.update { it.copy(presence = p) } } }
         chat.onPresence = presence::receive
+        chat.onNotice = ::notice
         viewModelScope.launch { nearby.state.collect { n -> _state.update { it.copy(nearby = n) } } }
         restore()
     }
@@ -149,6 +156,34 @@ class AppViewModel @JvmOverloads constructor(
         nearby.setRadius(radius(_state.value.discovery))
         publishCard()
         restoreProfile()
+        notifier.background(_state.value.notify.background)
+    }
+
+    // New messages and matches reach the user outside the app. The text is only on the display when the user wants it.
+    private fun notice(notice: Notice) {
+        val s = _state.value.notify
+        if (!s.enabled || visible) return
+        when (notice) {
+            is Notice.Message -> notifier.message(notice.peer, notice.name.takeIf { s.showText }, notice.text.takeIf { s.showText && !notice.photo }, notice.photo)
+            is Notice.Match -> notifier.match(notice.peer, notice.name.takeIf { s.showText })
+        }
+    }
+
+    fun openNotifications(open: Boolean) = _state.update { it.copy(notificationsOpen = open) }
+
+    fun updateNotify(settings: NotifySettings) {
+        NotifySettings.save(prefs, settings)
+        _state.update { it.copy(notify = settings) }
+        if (_state.value.account != null) notifier.background(settings.background)
+    }
+
+    fun refreshNotifyPermission() = _state.update { it.copy(notifyPermission = notifier.permitted()) }
+
+    // A tap on a notification
+    fun openFromNotification(peer: String) {
+        if (_state.value.account == null) return
+        chat.openConversation(peer)
+        notifier.clear(peer)
     }
 
     // A new phone has an empty profile: it is filled from the own card on the relays
@@ -174,6 +209,8 @@ class AppViewModel @JvmOverloads constructor(
             nearby.close()
             feed.close()
             presence.close()
+            notifier.background(false)
+            notifier.clearAll()
             getApplication<Application>().deleteDatabase("chat-$key.db")
             getApplication<Application>().deleteDatabase("feed-$key.db")
             val theme = prefs.getString(KEY_THEME, null)
@@ -244,6 +281,11 @@ class AppViewModel @JvmOverloads constructor(
 
     // The place is shared only while the app is on screen: after half a minute in the background the presence stops
     fun appVisible(visible: Boolean) {
+        this.visible = visible
+        if (visible) {
+            notifier.clearAll()
+            refreshNotifyPermission()
+        }
         backgroundJob?.cancel()
         backgroundJob = null
         if (!visible) backgroundJob = viewModelScope.launch {
@@ -433,7 +475,7 @@ class AppViewModel @JvmOverloads constructor(
     }
 
     fun selectTab(tab: Tab) {
-        _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, privacyOpen = false) }
+        _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, privacyOpen = false, notificationsOpen = false) }
         if (tab == Tab.Swipe || tab == Tab.Feed) nearby.refreshArea()
         if (tab == Tab.Feed) feed.refresh()
     }
@@ -529,6 +571,8 @@ class AppViewModel @JvmOverloads constructor(
     private fun savedTheme(): ThemeMode = ThemeMode.values().firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.Light
 
     fun signOut() {
+        notifier.background(false)
+        notifier.clearAll()
         chat.close()
         nearby.close()
         feed.close()
@@ -536,7 +580,7 @@ class AppViewModel @JvmOverloads constructor(
         saved.clear()
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, composerOpen = false, privacyOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, composerOpen = false, privacyOpen = false, notificationsOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {
