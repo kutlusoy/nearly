@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="report_action">Report</string>
+    <string name="report_title">Report this person</string>
+    <string name="report_help">A report is public. It shows your account and the person on the relays, and nobody has to act on it. The person is blocked on your phone as well.</string>
+    <string name="report_type_spam">Spam or scam</string>
+    <string name="report_type_impersonation">Pretends to be someone else</string>
+    <string name="report_type_nudity">Nudity</string>
+    <string name="report_type_illegal">Illegal content</string>
+    <string name="report_type_underage">Seems under 18</string>
+    <string name="report_type_abuse">Harassment or abuse</string>
+    <string name="report_note">Note (optional)</string>
+    <string name="report_consent">I know the report is public and shows my account.</string>
+    <string name="report_send">Report and block</string>
+    <string name="request_suspicious">Careful: a link, an invitation to another app or a request for money.</string>
+    <string name="conversation_stranger">You do not know this person yet. Do not send money, codes or private photos to people you have not met.</string>
+</resources>

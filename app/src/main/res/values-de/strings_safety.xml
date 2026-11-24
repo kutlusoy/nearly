@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="report_action">Melden</string>
+    <string name="report_title">Diese Person melden</string>
+    <string name="report_help">Eine Meldung ist öffentlich. Sie zeigt dein Konto und die Person auf den Relays, und niemand muss darauf reagieren. Die Person wird auf deinem Handy auch blockiert.</string>
+    <string name="report_type_spam">Spam oder Betrug</string>
+    <string name="report_type_impersonation">Gibt sich als jemand anderes aus</string>
+    <string name="report_type_nudity">Nacktheit</string>
+    <string name="report_type_illegal">Illegale Inhalte</string>
+    <string name="report_type_underage">Wirkt jünger als 18</string>
+    <string name="report_type_abuse">Belästigung oder Beleidigung</string>
+    <string name="report_note">Hinweis (freiwillig)</string>
+    <string name="report_consent">Ich weiß, dass die Meldung öffentlich ist und mein Konto zeigt.</string>
+    <string name="report_send">Melden und blockieren</string>
+    <string name="request_suspicious">Vorsicht: ein Link, eine Einladung in eine andere App oder eine Bitte um Geld.</string>
+    <string name="conversation_stranger">Du kennst diese Person noch nicht. Schicke kein Geld, keine Codes und keine privaten Fotos an Menschen, die du nicht getroffen hast.</string>
+</resources>
