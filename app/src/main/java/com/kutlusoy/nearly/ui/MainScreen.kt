@@ -56,6 +56,8 @@ import com.kutlusoy.nearly.R
 import com.kutlusoy.nearly.chat.ChatUiState
 import com.kutlusoy.nearly.discovery.NearbyState
 import com.kutlusoy.nearly.feed.FeedUiState
+import com.kutlusoy.nearly.presence.PresenceSettings
+import com.kutlusoy.nearly.presence.PresenceUi
 
 private fun Tab.icon(selected: Boolean = true): ImageVector = when (this) {
     Tab.Swipe -> if (selected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
@@ -109,6 +111,9 @@ fun MainScreen(
     feed: FeedUiState = FeedUiState(),
     feedActions: FeedActions = FeedActions(),
     onCompose: () -> Unit = {},
+    presence: PresenceUi = PresenceUi(),
+    presenceSettings: PresenceSettings = PresenceSettings(),
+    mapActions: MapActions = MapActions(),
 ) {
     val followedKeys = chat.following.map { it.peer }.toSet()
     Scaffold(
@@ -159,6 +164,7 @@ fun MainScreen(
                     people = nearby.people, feed = feed, names = chat.following.associate { it.peer to it.name }, myName = account.username,
                     following = followedKeys, onFollow = onFollowKey, actions = feedActions, onCompose = onCompose,
                 )
+                Tab.Map -> MapScreen(presence, presenceSettings, chat.following.associate { it.peer to it.name }, nearby.permission, mapActions)
                 Tab.Profile -> ProfileTab(account, profile, chat.following.size, onSettings, onEditProfile, onOpenFollowing)
                 Tab.Chats -> ChatsScreen(chat, account.npub, onOpenChat, onStartChat, onClearChatError, onNetworkSettings, onFollowRequest = onFollowRequest, onDeleteRequest = onDeleteRequest, onBlockRequest = onBlockRequest)
                 else -> SoonTab(tab)

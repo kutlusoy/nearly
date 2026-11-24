@@ -57,12 +57,15 @@ class ChatController(
     private var statusJob: Job? = null
     private var policy = MessagePolicy.FollowedOnly
 
+    // Where the heartbeats of friends go, set by the app
+    var onPresence: (com.kutlusoy.nearly.nostr.Rumor) -> Unit = {}
+
     fun open(session: Session, name: String, about: String, age: Int?, mode: NetworkMode, picture: String? = null) {
         close()
         val key = NostrKeys.toHex(session.publicKey).take(16)
         val chatStore = storeFor(key)
         store = chatStore
-        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) } }, onMuted = { peer -> applyBlock(peer) }, onIncoming = { message ->
+        val chat = ChatService(link.transport, session, chatStore, onChange = { refresh() }, acceptPhotos = { peer -> isVisible(chatStore, peer, chatStore.followed().toSet()) }, onMatch = { peer -> service?.resolveProfile(peer); _state.update { it.copy(match = contact(chatStore, peer)) } }, onMuted = { peer -> applyBlock(peer) }, onPresence = { rumor -> onPresence(rumor) }, onIncoming = { message ->
             if (_state.value.openPeer == message.peer) {
                 chatStore.markRead(message.peer)
                 refresh()
