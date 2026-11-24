@@ -14,6 +14,9 @@ import com.kutlusoy.nearly.chat.SwipeDecision
 import com.kutlusoy.nearly.discovery.AndroidAreaSource
 import com.kutlusoy.nearly.discovery.AreaSource
 import com.kutlusoy.nearly.discovery.NearbyController
+import com.kutlusoy.nearly.feed.FeedController
+import com.kutlusoy.nearly.feed.FeedStore
+import com.kutlusoy.nearly.feed.SqliteFeedStore
 import com.kutlusoy.nearly.media.BlossomPhotoBackend
 import com.kutlusoy.nearly.media.PhotoBackend
 import com.kutlusoy.nearly.nostr.DeleteResult
@@ -55,9 +58,11 @@ class AppViewModel @JvmOverloads constructor(
     link: NetworkLink = RelayHub(app),
     area: AreaSource = AndroidAreaSource(app),
     private val photos: PhotoBackend = BlossomPhotoBackend(link, cacheDir = File(app.cacheDir, "photos")),
+    private val feedStoreFor: (String) -> FeedStore = { SqliteFeedStore(app, it) },
     chatStoreFor: (String) -> ChatStore = { SqliteChatStore(app, it) },
 ) : AndroidViewModel(app) {
     private val chat = ChatController(link, chatStoreFor, viewModelScope)
+    private val feed = FeedController(link, feedStoreFor)
     private val nearby = NearbyController(link, area)
     private val saved = SavedLoginStore(File(app.noBackupFilesDir, "session.bin"), box)
     private val vault = KeyVault(FileKeyStore(File(app.noBackupFilesDir, "accounts")))
@@ -71,11 +76,19 @@ class AppViewModel @JvmOverloads constructor(
 
     init {
         viewModelScope.launch {
+            var blockedBefore = emptySet<String>()
             chat.state.collect { c ->
                 _state.update { it.copy(chat = c) }
-                nearby.setBlocked(c.blocked.map { b -> b.peer }.toSet())
+                val blocked = c.blocked.map { b -> b.peer }.toSet()
+                nearby.setBlocked(blocked)
+                feed.setFollows(c.following.map { f -> f.peer }.toSet())
+                if (blocked != blockedBefore) {
+                    blockedBefore = blocked
+                    feed.refresh()
+                }
             }
         }
+        viewModelScope.launch { feed.state.collect { f -> _state.update { it.copy(feed = f) } } }
         viewModelScope.launch { nearby.state.collect { n -> _state.update { it.copy(nearby = n) } } }
         restore()
     }
@@ -113,6 +126,7 @@ class AppViewModel @JvmOverloads constructor(
         chat.setPolicy(_state.value.messagePolicy)
         chat.open(opened, username, _state.value.profile.about, age, _state.value.networkMode, _state.value.profile.photos.firstOrNull()?.url)
         nearby.open(opened)
+        feed.open(opened) { key -> _state.value.chat.blocked.any { it.peer == key } }
         nearby.setRadius(radius(_state.value.discovery))
         publishCard()
         restoreProfile()
@@ -139,7 +153,9 @@ class AppViewModel @JvmOverloads constructor(
             kotlinx.coroutines.delay(DELETE_GRACE_MS)
             chat.close()
             nearby.close()
+            feed.close()
             getApplication<Application>().deleteDatabase("chat-$key.db")
+            getApplication<Application>().deleteDatabase("feed-$key.db")
             val theme = prefs.getString(KEY_THEME, null)
             prefs.edit().clear().apply { theme?.let { putString(KEY_THEME, it) } }.apply()
             saved.clear()
@@ -169,6 +185,37 @@ class AppViewModel @JvmOverloads constructor(
     }
 
     fun refreshArea() = nearby.refreshArea()
+
+    fun openComposer(open: Boolean) = _state.update { it.copy(composerOpen = open, composeNote = null) }
+
+    // Uploads the photos, then publishes the post or the story. A story has at most one photo.
+    fun publishPost(text: String, files: List<() -> InputStream>, story: Boolean) {
+        val opened = session ?: return
+        if (_state.value.composeBusy) return
+        _state.update { it.copy(composeBusy = true, composeNote = null) }
+        viewModelScope.launch {
+            val refs = runCatching { withContext(Dispatchers.IO) { files.take(if (story) 1 else com.kutlusoy.nearly.nostr.PostCodec.MAX_PHOTOS).map { photos.upload(opened, it) } } }
+            val list = refs.getOrNull()
+            val ok = when {
+                list == null -> false
+                story && list.isNotEmpty() -> feed.storyPhoto(list.first(), text)
+                story -> feed.storyText(text)
+                list.isNotEmpty() -> feed.postPhotos(text, list)
+                else -> feed.postText(text)
+            }
+            _state.update { it.copy(composeBusy = false, composerOpen = !ok, composeNote = if (ok) null else if (list == null) ComposeNote.UploadFailed else ComposeNote.Rejected) }
+        }
+    }
+
+    fun likePost(id: String) = feed.like(id)
+
+    fun unlikePost(id: String) = feed.unlike(id)
+
+    fun deletePost(id: String) = feed.delete(id)
+
+    fun retryPost(id: String) = feed.retry(id)
+
+    fun storySeen(id: String) = feed.markSeen(id)
 
     fun swipe(key: String, direction: SwipeDirection) = chat.swipe(
         key,
@@ -343,6 +390,7 @@ class AppViewModel @JvmOverloads constructor(
     fun selectTab(tab: Tab) {
         _state.update { it.copy(tab = tab, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false) }
         if (tab == Tab.Swipe || tab == Tab.Feed) nearby.refreshArea()
+        if (tab == Tab.Feed) feed.refresh()
     }
 
     fun openSettings(open: Boolean) = _state.update { it.copy(settingsOpen = open) }
@@ -438,15 +486,17 @@ class AppViewModel @JvmOverloads constructor(
     fun signOut() {
         chat.close()
         nearby.close()
+        feed.close()
         saved.clear()
         session?.lock()
         session = null
-        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
+        _state.update { it.copy(screen = Screen.Welcome, account = null, settingsOpen = false, discoveryOpen = false, editProfileOpen = false, backupOpen = false, followingOpen = false, blockedOpen = false, composerOpen = false, tab = Tab.Swipe, signIn = it.signIn.copy(words = ""), registration = RegistrationForm()) }
     }
 
     override fun onCleared() {
         chat.close()
         nearby.close()
+        feed.close()
         session?.lock()
     }
 
